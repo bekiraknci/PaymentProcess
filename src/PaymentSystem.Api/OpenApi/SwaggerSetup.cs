@@ -26,6 +26,15 @@ internal static class SwaggerSetup
                     A successful `POST /api/auth/login` authorizes Swagger automatically with the returned token.
                     To switch users, log in again; to test 401, use **Authorize → Logout**.
                     When pasting a token manually, the `Bearer ` prefix is optional.
+
+                    **Deterministic provider outcomes** (start `FakePaymentProvider.Api` on http://localhost:5100)
+                    - amount `666` → always declined
+                    - amount `503` → provider outage (503)
+                    - amount `999` → provider timeout
+                    - any other amount → mostly approved, with configurable random failures
+
+                    Seeded provider `FAKEPAY` id: `0196a000-0000-7000-8000-000000000001` (active, EUR/GBP/TRY/USD).
+                    Seeded provider `LEGACYPAY` id: `0196a000-0000-7000-8000-000000000002` (inactive).
                     """
             });
 

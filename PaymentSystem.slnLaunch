@@ -1,0 +1,20 @@
+﻿{
+  "Version": 1,
+  "Profiles": [
+    {
+      "Name": "Api + FakePaymentProvider",
+      "Projects": [
+        {
+          "Path": "src\\PaymentSystem.Api\\PaymentSystem.Api.csproj",
+          "Action": "Start",
+          "DebugTarget": "IIS Express"
+        },
+        {
+          "Path": "src\\FakePaymentProvider.Api\\FakePaymentProvider.Api.csproj",
+          "Action": "Start",
+          "DebugTarget": "http"
+        }
+      ]
+    }
+  ]
+}
