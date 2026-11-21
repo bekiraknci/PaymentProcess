@@ -1,0 +1,54 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using PaymentSystem.Application.Abstractions.Security;
+using PaymentSystem.Application.Auth.Login;
+using PaymentSystem.Application.Authorization;
+
+namespace PaymentSystem.Api.Controllers;
+
+[Route("api/auth")]
+public sealed class AuthController : ApiControllerBase
+{
+    /// <summary>
+    /// Authenticates a user with email and password and issues a JWT access token.
+    /// </summary>
+    /// <remarks>
+    /// Seeded accounts: `admin@test.com / Admin123!`, `user@test.com / User123!`, `user2@test.com / User123!`.
+    /// Copy the returned `accessToken` into Swagger's **Authorize** dialog.
+    /// </remarks>
+    /// <response code="200">Credentials are valid; the access token is returned.</response>
+    /// <response code="400">Email or password is missing or malformed.</response>
+    /// <response code="401">Email or password is incorrect.</response>
+    [HttpPost("login")]
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginCommand command,
+        [FromServices] LoginHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+    }
+
+    /// <summary>
+    /// Returns the identity and permissions of the authenticated caller.
+    /// </summary>
+    /// <response code="200">The caller's identity.</response>
+    /// <response code="401">The request has no valid access token.</response>
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType<CurrentUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+    public IActionResult Me([FromServices] ICurrentUser currentUser) =>
+        Ok(new CurrentUserResponse(
+            currentUser.Id,
+            currentUser.Email,
+            currentUser.IsAdmin,
+            Permissions.All.Where(currentUser.HasPermission).ToList()));
+}
+
+public sealed record CurrentUserResponse(Guid Id, string? Email, bool IsAdmin, IReadOnlyList<string> Permissions);
