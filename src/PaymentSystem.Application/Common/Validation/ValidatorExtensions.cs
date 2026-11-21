@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using PaymentSystem.Application.Common.Results;
 
@@ -17,7 +18,7 @@ public static class ValidatorExtensions
         }
 
         var errors = result.Errors
-            .GroupBy(e => e.PropertyName)
+            .GroupBy(e => JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName))
             .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).Distinct().ToArray());
 
         return Error.Validation(errors);

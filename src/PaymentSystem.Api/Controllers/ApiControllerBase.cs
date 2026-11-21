@@ -5,7 +5,6 @@ using PaymentSystem.Application.Common.Results;
 namespace PaymentSystem.Api.Controllers;
 
 [ApiController]
-[Produces("application/json")]
 public abstract class ApiControllerBase : ControllerBase
 {
     protected ObjectResult Problem(Error error)
@@ -24,7 +23,7 @@ public abstract class ApiControllerBase : ControllerBase
             var validation = ProblemDetailsFactory.CreateValidationProblemDetails(
                 HttpContext, modelState, StatusCodes.Status400BadRequest, error.Message);
             validation.Extensions["code"] = error.Code;
-            return new ObjectResult(validation) { StatusCode = validation.Status };
+            return AsProblemResult(validation);
         }
 
         var status = error.Type switch
@@ -39,6 +38,12 @@ public abstract class ApiControllerBase : ControllerBase
 
         var problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, status, detail: error.Message);
         problem.Extensions["code"] = error.Code;
-        return new ObjectResult(problem) { StatusCode = status };
+        return AsProblemResult(problem);
     }
+
+    private static ObjectResult AsProblemResult(ProblemDetails problem) => new(problem)
+    {
+        StatusCode = problem.Status,
+        ContentTypes = { "application/problem+json" }
+    };
 }
