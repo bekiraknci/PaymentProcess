@@ -18,6 +18,9 @@ public sealed class PaymentProcessingOptions
     [Range(1, 1000)]
     public int RecoveryBatchSize { get; init; } = 100;
 
+    [Range(100, 1_000_000)]
+    public int QueueCapacity { get; init; } = 10_000;
+
     [Range(1, 10)]
     public int MaxAutomaticAttempts { get; init; } = 3;
 
