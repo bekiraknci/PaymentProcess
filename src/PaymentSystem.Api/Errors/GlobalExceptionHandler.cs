@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PaymentSystem.Application.Abstractions.Persistence;
 using PaymentSystem.Domain.Common;
 
 namespace PaymentSystem.Api.Errors;
@@ -17,8 +18,10 @@ internal sealed class GlobalExceptionHandler(
                 Create(StatusCodes.Status409Conflict, "Invalid state transition", domain.Message, domain.Code),
             DomainException domain =>
                 Create(StatusCodes.Status400BadRequest, "Business rule violation", domain.Message, domain.Code),
-            DbUpdateConcurrencyException =>
+            DbUpdateConcurrencyException or ConcurrencyConflictException =>
                 Create(StatusCodes.Status409Conflict, "Concurrency conflict", "The resource was modified by another request. Please retry.", "concurrency_conflict"),
+            UniqueConstraintViolationException =>
+                Create(StatusCodes.Status409Conflict, "Conflict", "The resource conflicts with an existing one.", "unique_violation"),
             BadHttpRequestException bad =>
                 Create(bad.StatusCode, "Bad request", bad.Message, "bad_request"),
             OperationCanceledException when httpContext.RequestAborted.IsCancellationRequested =>
