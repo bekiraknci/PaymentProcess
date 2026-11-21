@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PaymentSystem.Api/PaymentSystem.Api.csproj" />
+    <Project Path="src/PaymentSystem.Application/PaymentSystem.Application.csproj" />
+    <Project Path="src/PaymentSystem.Domain/PaymentSystem.Domain.csproj" />
+    <Project Path="src/PaymentSystem.Infrastructure/PaymentSystem.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PaymentSystem.Domain.Tests/PaymentSystem.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
