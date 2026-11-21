@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using PaymentSystem.Api.RateLimiting;
 using PaymentSystem.Api.Security;
 using PaymentSystem.Application.Authorization;
 using PaymentSystem.Application.Common.Paging;
@@ -38,8 +40,11 @@ public sealed class PaymentsController : ApiControllerBase
     /// <response code="403">The caller lacks the `Payments.Create` permission.</response>
     /// <response code="404">The provider does not exist.</response>
     /// <response code="409">The Idempotency-Key was already used with a different request body.</response>
+    /// <response code="429">The caller exceeded the payment submission rate limit.</response>
     [HttpPost]
     [HasPermission(Permissions.PaymentsCreate)]
+    [EnableRateLimiting(RateLimitPolicies.PaymentCreate)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<PaymentResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
