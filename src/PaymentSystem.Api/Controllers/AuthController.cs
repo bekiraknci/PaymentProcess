@@ -14,7 +14,7 @@ public sealed class AuthController : ApiControllerBase
     /// </summary>
     /// <remarks>
     /// Seeded accounts: `admin@test.com / Admin123!`, `user@test.com / User123!`, `user2@test.com / User123!`.
-    /// Copy the returned `accessToken` into Swagger's **Authorize** dialog.
+    /// In Swagger, a successful login authorizes the UI automatically with the returned `accessToken`.
     /// </remarks>
     /// <response code="200">Credentials are valid; the access token is returned.</response>
     /// <response code="400">Email or password is missing or malformed.</response>

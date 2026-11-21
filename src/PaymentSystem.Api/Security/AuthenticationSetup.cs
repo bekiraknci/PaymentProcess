@@ -36,6 +36,14 @@ internal static class AuthenticationSetup
                     NameClaimType = JwtRegisteredClaimNames.Email,
                     RoleClaimType = JwtTokenService.RoleClaimType
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        context.Token = ExtractToken(context.Request.Headers.Authorization.ToString());
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddAuthorizationBuilder()
@@ -46,6 +54,19 @@ internal static class AuthenticationSetup
         services.AddScoped<ICurrentUser, CurrentUser>();
 
         return services;
+    }
+
+    private static string? ExtractToken(string authorization)
+    {
+        const string prefix = "Bearer ";
+        var value = authorization.Trim();
+
+        while (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[prefix.Length..].TrimStart();
+        }
+
+        return string.IsNullOrEmpty(value) ? null : value;
     }
 
     private static AuthorizationBuilder AddPermissionPolicies(this AuthorizationBuilder builder)

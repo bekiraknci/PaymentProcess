@@ -23,7 +23,9 @@ internal static class SwaggerSetup
                     - `user@test.com` / `User123!` (User)
                     - `user2@test.com` / `User123!` (User)
 
-                    Call `POST /api/auth/login`, then paste the `accessToken` into **Authorize**.
+                    A successful `POST /api/auth/login` authorizes Swagger automatically with the returned token.
+                    To switch users, log in again; to test 401, use **Authorize → Logout**.
+                    When pasting a token manually, the `Bearer ` prefix is optional.
                     """
             });
 
@@ -59,6 +61,17 @@ internal static class SwaggerSetup
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "PaymentSystem API v1");
             options.DocumentTitle = "PaymentSystem API";
             options.EnablePersistAuthorization();
+            options.UseResponseInterceptor("""
+                (res) => {
+                    if (res.ok && res.url.endsWith('/api/auth/login')) {
+                        try {
+                            const token = JSON.parse(res.text).accessToken;
+                            if (token) { window.ui.preauthorizeApiKey('Bearer', token); }
+                        } catch { }
+                    }
+                    return res;
+                }
+                """);
             options.DisplayRequestDuration();
         });
 
