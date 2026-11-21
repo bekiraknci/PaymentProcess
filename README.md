@@ -65,6 +65,21 @@ If the fake provider is not running, payments are still accepted. They end up `F
 dotnet test
 ```
 
+| Project | Scope |
+|---|---|
+| `PaymentSystem.Domain.Tests` | Value objects and payment state machine |
+| `PaymentSystem.Application.Tests` | Use cases with in-memory fakes |
+| `PaymentSystem.Api.IntegrationTests` | Full HTTP pipeline against a real SQL Server: functional, security, database (schema, constraints, query plans) and load/concurrency tests |
+
+Integration tests create a throw-away database named `PaymentSystem_IT_<guid>` and drop it afterwards. They never touch the application database: startup aborts if the app is not pointed at the test database. By default they use LocalDB. To run them against another SQL Server (for example in CI), set `PAYMENTSYSTEM_TEST_SQLSERVER`, e.g. `localhost,1433`.
+
+### Health checks
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health/live` | Process is up (no dependencies checked) |
+| `GET /health/ready` | Database is reachable |
+
 ## Database
 
 The default connection string targets LocalDB with Windows authentication:
@@ -154,4 +169,35 @@ The worker sends the payment id as the provider's idempotency key, so a payment 
 | `PaymentProcessing:MaxAutomaticAttempts` | Attempts after which no automatic retry is scheduled |
 | `PaymentProcessing:RetryBaseDelayMinutes` | Base for the exponential retry delay (`base × 2^attempt` minutes) |
 | `PaymentProvider:BaseUrl` | Provider base URL |
+| `PaymentProcessing:QueueCapacity` | In-memory queue capacity. When it is full, new payments are still persisted and the database poll picks them up |
 | `PaymentProvider:AttemptTimeoutSeconds`, `TotalTimeoutSeconds`, `MaxRetryAttempts` | HTTP resilience settings |
+| `RateLimiting:Enabled` | Turns all rate limits on or off |
+| `RateLimiting:LoginPermitLimit`, `LoginWindowSeconds` | Login attempts per client IP per window (brute-force protection) |
+| `RateLimiting:PaymentCreateBurst`, `PaymentCreatePerSecond` | Token bucket for `POST /api/payments` per user |
+| `RateLimiting:GlobalBurst`, `GlobalPerSecond` | Token bucket for all requests per user (or per IP when anonymous) |
+
+## Security hardening
+
+- JWT validation pins `HS256` and requires signed, expiring tokens with a valid issuer and audience. Ownership is enforced in queries, so another user's payment returns 404.
+- Rate limits answer `429` with `Retry-After` and a problem+json body.
+- Request bodies are limited to 64 KB on both Kestrel and IIS.
+- API responses send `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cache-Control: no-store` and a restrictive CSP, and the `Server` header is removed. HSTS and HTTPS redirection are enabled outside Development.
+- Error responses never include exception details, only a `traceId`.
+
+## Indexing strategy
+
+Payment ids are `Guid` v7. SQL Server sorts `uniqueidentifier` values by their last bytes, which are random in v7, so a clustered index on `Id` would scatter inserts across the table. Instead, the primary keys of `Payments` and `PaymentStatusHistory` are **non-clustered**, and the clustered index follows insertion time: `(CreatedAt, Id)` and `(ChangedAt, Id)`. New rows are appended at the end, and date-range scans (reports) read contiguous pages.
+
+| Index | Serves |
+|---|---|
+| `CX_Payments_CreatedAt_Id` (clustered) | Admin listing newest-first, date-range reports |
+| `UX_Payments_UserId_IdempotencyKey` (unique, filtered `IS NOT NULL`) | Idempotency lookup and duplicate protection under concurrency |
+| `IX_Payments_UserId_CreatedAt` | A user's payment list, newest first |
+| `IX_Payments_UserId_Status_CreatedAt` | A user's payment list filtered by status |
+| `IX_Payments_Status_CreatedAt` | Pending pickup by the worker, admin list filtered by status |
+| `IX_Payments_Status_NextAttemptAt` | Retry job: failed payments that are due |
+| `IX_Payments_Processing_LockedUntil` (filtered `Status = 'Processing'`) | Recovery of expired processing leases; stays tiny |
+| `IX_Payments_ProviderId_CreatedAt` INCLUDE (`Status`, `Amount`) | Provider/date reports without key lookups |
+| `IX_PaymentStatusHistory_PaymentId_ChangedAt` | Payment history |
+
+Check constraints (`Amount > 0`, three upper-case letters for the currency, a known status, non-negative attempts, a transaction id required for `Completed`) protect the data even from writes that bypass the domain. The integration tests verify the schema and assert, from execution plans, that every hot query uses an index seek.
