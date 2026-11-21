@@ -35,14 +35,16 @@ public static class DependencyInjection
 
     private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("PaymentSystem")
-            ?? throw new InvalidOperationException("Connection string 'PaymentSystem' is not configured.");
-
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddDbContext<AppDbContext>((sp, options) =>
+        {
+            var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("PaymentSystem")
+                ?? throw new InvalidOperationException("Connection string 'PaymentSystem' is not configured.");
+
             options
                 .UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure())
-                .AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>()));
+                .AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
+        });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -79,9 +81,6 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        var providerOptions = configuration.GetSection(PaymentProviderOptions.SectionName).Get<PaymentProviderOptions>()
-            ?? new PaymentProviderOptions();
-
         services
             .AddHttpClient<IPaymentProviderClient, FakePaymentProviderClient>((sp, client) =>
             {
@@ -89,8 +88,10 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/");
                 client.Timeout = Timeout.InfiniteTimeSpan;
             })
-            .AddStandardResilienceHandler(options =>
+            .AddStandardResilienceHandler()
+            .Configure((options, sp) =>
             {
+                var providerOptions = sp.GetRequiredService<IOptions<PaymentProviderOptions>>().Value;
                 var attemptTimeout = TimeSpan.FromSeconds(providerOptions.AttemptTimeoutSeconds);
 
                 options.AttemptTimeout.Timeout = attemptTimeout;
