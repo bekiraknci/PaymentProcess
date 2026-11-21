@@ -10,8 +10,11 @@ internal sealed class PaymentStatusHistoryConfiguration : IEntityTypeConfigurati
     {
         builder.ToTable("PaymentStatusHistory");
 
-        builder.HasKey(h => h.Id);
+        builder.HasKey(h => h.Id).IsClustered(false);
         builder.Property(h => h.Id).ValueGeneratedNever();
+        builder.HasIndex(h => new { h.ChangedAt, h.Id })
+            .IsClustered()
+            .HasDatabaseName("CX_PaymentStatusHistory_ChangedAt_Id");
 
         builder.Property(h => h.FromStatus).HasConversion<string>().HasMaxLength(20);
         builder.Property(h => h.ToStatus).HasConversion<string>().HasMaxLength(20).IsRequired();

@@ -58,11 +58,35 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasField("_history")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.HasKey(p => p.Id).IsClustered(false);
+        builder.HasIndex(p => new { p.CreatedAt, p.Id })
+            .IsClustered()
+            .HasDatabaseName("CX_Payments_CreatedAt_Id");
+
         builder.HasIndex(p => new { p.UserId, p.Status, p.CreatedAt })
             .HasDatabaseName("IX_Payments_UserId_Status_CreatedAt");
 
+        builder.HasIndex(p => new { p.UserId, p.CreatedAt })
+            .HasDatabaseName("IX_Payments_UserId_CreatedAt");
+
         builder.HasIndex(p => new { p.Status, p.NextAttemptAt })
             .HasDatabaseName("IX_Payments_Status_NextAttemptAt");
+
+        builder.HasIndex(p => new { p.Status, p.CreatedAt })
+            .HasDatabaseName("IX_Payments_Status_CreatedAt");
+
+        builder.HasIndex(p => p.LockedUntil)
+            .HasFilter("[Status] = N'Processing'")
+            .HasDatabaseName("IX_Payments_Processing_LockedUntil");
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] > 0");
+            t.HasCheckConstraint("CK_Payments_Currency_Format", "[Currency] COLLATE Latin1_General_BIN LIKE '[A-Z][A-Z][A-Z]'");
+            t.HasCheckConstraint("CK_Payments_Status", "[Status] IN (N'Pending', N'Processing', N'Completed', N'Failed')");
+            t.HasCheckConstraint("CK_Payments_AttemptCount_NonNegative", "[AttemptCount] >= 0");
+            t.HasCheckConstraint("CK_Payments_Completed_HasTransaction", "[Status] <> N'Completed' OR [ProviderTransactionId] IS NOT NULL");
+        });
 
         builder.HasIndex(p => new { p.ProviderId, p.CreatedAt })
             .IncludeProperties(p => p.Status)
