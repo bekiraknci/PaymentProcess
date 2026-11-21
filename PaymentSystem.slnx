@@ -7,6 +7,7 @@
     <Project Path="src/FakePaymentProvider.Api/FakePaymentProvider.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PaymentSystem.Application.Tests/PaymentSystem.Application.Tests.csproj" />
     <Project Path="tests/PaymentSystem.Domain.Tests/PaymentSystem.Domain.Tests.csproj" />
   </Folder>
 </Solution>
