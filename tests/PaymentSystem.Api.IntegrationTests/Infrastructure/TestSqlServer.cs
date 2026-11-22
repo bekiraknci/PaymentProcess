@@ -26,7 +26,6 @@ internal static class TestSqlServer
             return localDb;
         }
 
-        RunSqlLocalDb($"start {LocalDbInstance}");
         var pipe = RunSqlLocalDb($"info {LocalDbInstance}")
             .Split('\n')
             .Select(line => line.Trim())

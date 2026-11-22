@@ -12,6 +12,18 @@ public sealed class RestartRecoveryTests(ITestOutputHelper output)
     public async Task Payments_left_pending_or_processing_by_a_stopped_instance_are_processed_after_restart()
     {
         var database = PaymentApiFactory.NewDatabaseName();
+        try
+        {
+            await RunScenarioAsync(database);
+        }
+        finally
+        {
+            await PaymentApiFactory.DropDatabaseAsync(database);
+        }
+    }
+
+    private async Task RunScenarioAsync(string database)
+    {
         Guid processingId;
         Guid pendingId;
 

@@ -138,7 +138,7 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | **Manual retry is not capped.** | An admin override can retry a payment that exhausted the 3 automatic attempts. Automatic retries stop at `MaxAutomaticAttempts`. |
 | **`TimeProvider` is injected everywhere.** | Time-dependent logic (leases, backoff, audit stamps, JWT expiry) is deterministic in tests. |
 | **Built-in hosted services only.** | `BackgroundService` and `PeriodicTimer`; no Hangfire or Quartz. |
-| **`Microsoft.Extensions.Http.Resilience`.** | Per-attempt and total timeouts, exponential retry with jitter on 5xx/408/timeouts, and a circuit breaker. |
+| **`Microsoft.Extensions.Http.Resilience`.** | Per-attempt and total timeouts, exponential retry with jitter on 5xx/408/timeouts, and a circuit breaker. When the circuit is open, the next automatic attempt is postponed until the circuit can close, so retries are not wasted against an open breaker. |
 
 ## API
 
@@ -239,7 +239,7 @@ dotnet test
 | Project | Tests | Scope |
 |---|---|---|
 | `PaymentSystem.Domain.Tests` | 30 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules |
-| `PaymentSystem.Application.Tests` | 24 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op and lost claim; backoff; retry job selection; manual retry |
+| `PaymentSystem.Application.Tests` | 26 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op and lost claim; backoff; retry job selection; manual retry |
 | `PaymentSystem.Api.IntegrationTests` | 129 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
 
 The integration tests cover:

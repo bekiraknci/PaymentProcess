@@ -1,13 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PaymentSystem.Application.Abstractions.Providers;
 using Polly.CircuitBreaker;
 using Polly.Timeout;
 
 namespace PaymentSystem.Infrastructure.Providers;
 
-internal sealed class FakePaymentProviderClient(HttpClient httpClient, ILogger<FakePaymentProviderClient> logger)
+internal sealed class FakePaymentProviderClient(HttpClient httpClient, IOptions<PaymentProviderOptions> options, ILogger<FakePaymentProviderClient> logger)
     : IPaymentProviderClient
 {
     public async Task<ProviderChargeResult> ChargeAsync(ProviderChargeRequest request, CancellationToken cancellationToken)
@@ -50,7 +51,8 @@ internal sealed class FakePaymentProviderClient(HttpClient httpClient, ILogger<F
         catch (BrokenCircuitException)
         {
             logger.LogWarning("Provider circuit is open; payment {PaymentId} not sent.", request.PaymentId);
-            return ProviderChargeResult.Unavailable("Provider circuit is open.");
+            var retryAfter = TimeSpan.FromSeconds(options.Value.CircuitBreakerBreakSeconds);
+            return ProviderChargeResult.Unavailable("Provider circuit is open.", retryAfter);
         }
         catch (HttpRequestException ex)
         {

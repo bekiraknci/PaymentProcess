@@ -92,6 +92,28 @@ public sealed class ProcessPaymentHandlerTests
     }
 
     [Fact]
+    public async Task Open_circuit_postpones_the_next_attempt_until_the_circuit_can_close()
+    {
+        var payment = AddPendingPayment();
+        _provider.Result = ProviderChargeResult.Unavailable("Provider circuit is open.", TimeSpan.FromMinutes(10));
+
+        await CreateHandler().HandleAsync(payment.Id, CancellationToken.None);
+
+        payment.NextAttemptAt.Should().Be(Now.AddMinutes(10));
+    }
+
+    [Fact]
+    public async Task Retry_after_shorter_than_backoff_keeps_the_backoff()
+    {
+        var payment = AddPendingPayment();
+        _provider.Result = ProviderChargeResult.Unavailable("Provider circuit is open.", TimeSpan.FromSeconds(15));
+
+        await CreateHandler().HandleAsync(payment.Id, CancellationToken.None);
+
+        payment.NextAttemptAt.Should().Be(Now.AddMinutes(2));
+    }
+
+    [Fact]
     public async Task Last_automatic_attempt_leaves_no_next_attempt()
     {
         var payment = AddPendingPayment();
