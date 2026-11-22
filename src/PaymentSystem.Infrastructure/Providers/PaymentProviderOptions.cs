@@ -18,4 +18,10 @@ public sealed class PaymentProviderOptions
 
     [Range(0, 10)]
     public int MaxRetryAttempts { get; init; } = 3;
+
+    [Range(2, 100_000)]
+    public int CircuitBreakerMinimumThroughput { get; init; } = 5;
+
+    [Range(1, 3600)]
+    public int CircuitBreakerBreakSeconds { get; init; } = 15;
 }

@@ -29,4 +29,9 @@ public sealed class ScenarioOptions
     public decimal AlwaysUnavailableAmount { get; init; } = 503m;
 
     public decimal AlwaysTimeoutAmount { get; init; } = 999m;
+
+    public decimal FlakyAmount { get; init; } = 502m;
+
+    [Range(1, 100)]
+    public int FlakyFailuresPerKey { get; init; } = 4;
 }

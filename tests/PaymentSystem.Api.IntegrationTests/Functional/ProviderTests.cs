@@ -6,6 +6,7 @@ using PaymentSystem.Api.IntegrationTests.Infrastructure;
 
 namespace PaymentSystem.Api.IntegrationTests.Functional;
 
+[Collection(ApiCollection.Name)]
 public sealed class ProviderTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     private static string NewCode() => $"T{Guid.NewGuid():N}"[..20];

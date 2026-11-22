@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PaymentSystem.Api\PaymentSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\FakePaymentProvider.Api\FakePaymentProvider.Api.csproj" Aliases="fake" />
   </ItemGroup>
 
 </Project>

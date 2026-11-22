@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 
 namespace PaymentSystem.Api.IntegrationTests.Load;
 
+[Collection(ApiCollection.Name)]
 public sealed class LoadTests(PaymentApiFactory factory, ITestOutputHelper output) : ApiTestBase(factory)
 {
     [Fact]

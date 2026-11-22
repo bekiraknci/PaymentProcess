@@ -6,9 +6,11 @@ using PaymentSystem.Application.Payments.CreatePayment;
 using PaymentSystem.Application.Payments.GetPayment;
 using PaymentSystem.Application.Payments.ListPayments;
 using PaymentSystem.Application.Payments.Processing;
+using PaymentSystem.Application.Payments.Retry;
 using PaymentSystem.Application.Payments.RetryPayment;
 using PaymentSystem.Application.Providers;
 using PaymentSystem.Application.Providers.ListProviders;
+using PaymentSystem.Application.Reports;
 
 namespace PaymentSystem.Application;
 
@@ -28,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<RetryPaymentHandler>();
         services.AddScoped<ProcessPaymentHandler>();
         services.AddScoped<RecoverPaymentsHandler>();
+        services.AddScoped<RetryDueFailedPaymentsHandler>();
+
+        services.AddScoped<GetDailyPaymentReportHandler>();
 
         services.AddScoped<ListProvidersHandler>();
         services.AddScoped<GetProviderHandler>();

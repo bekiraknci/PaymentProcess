@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PaymentSystem.Api.Contracts;
 using PaymentSystem.Api.Security;
 using PaymentSystem.Application.Authorization;
 using PaymentSystem.Application.Providers;
@@ -47,7 +48,7 @@ public sealed class ProvidersController : ApiControllerBase
     /// Registers a new payment provider.
     /// </summary>
     /// <remarks>The code is normalized to upper case and must be unique.</remarks>
-    /// <param name="command">Provider code, name, optional base URL, supported currencies and initial state.</param>
+    /// <param name="request">Provider code, name, optional base URL, supported currencies and initial state.</param>
     /// <param name="handler">Create provider use case.</param>
     /// <param name="cancellationToken">Request cancellation token.</param>
     /// <response code="201">The provider was created.</response>
@@ -61,11 +62,11 @@ public sealed class ProvidersController : ApiControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Create(
-        [FromBody] CreateProviderCommand command,
+        [FromBody] CreateProviderRequest request,
         [FromServices] CreateProviderHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.HandleAsync(command, cancellationToken);
+        var result = await handler.HandleAsync(new CreateProviderCommand(request.Code, request.Name, request.BaseUrl, request.SupportedCurrencies, request.IsActive), cancellationToken);
         return result.IsSuccess
             ? CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value)
             : Problem(result.Error);
@@ -75,7 +76,7 @@ public sealed class ProvidersController : ApiControllerBase
     /// Updates the name, base URL and supported currencies of a provider.
     /// </summary>
     /// <param name="id">Provider identifier.</param>
-    /// <param name="command">New provider details.</param>
+    /// <param name="request">New provider details.</param>
     /// <param name="handler">Update provider use case.</param>
     /// <param name="cancellationToken">Request cancellation token.</param>
     /// <response code="200">The updated provider.</response>
@@ -90,11 +91,11 @@ public sealed class ProvidersController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> Update(
         Guid id,
-        [FromBody] UpdateProviderCommand command,
+        [FromBody] UpdateProviderRequest request,
         [FromServices] UpdateProviderHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.HandleAsync(id, command, cancellationToken);
+        var result = await handler.HandleAsync(id, new UpdateProviderCommand(request.Name, request.BaseUrl, request.SupportedCurrencies), cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
     }
 

@@ -31,6 +31,7 @@ internal static class SwaggerSetup
                     - amount `666` → always declined
                     - amount `503` → provider outage (503)
                     - amount `999` → provider timeout
+                    - amount `502` → fails the first attempt, then the retry job completes it
                     - any other amount → mostly approved, with configurable random failures
 
                     Seeded provider `FAKEPAY` id: `0196a000-0000-7000-8000-000000000001` (active, EUR/GBP/TRY/USD).

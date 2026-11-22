@@ -126,6 +126,23 @@ public sealed class Payment : AggregateRoot
         TransitionTo(PaymentStatus.Pending, reason, now);
     }
 
+    public void RequeueForAutomaticRetry(DateTimeOffset now, int maxAttempts)
+    {
+        if (!CanAutoRetry(maxAttempts))
+        {
+            throw new DomainException(
+                "payment.auto_retry_exhausted",
+                $"Payment cannot be retried automatically (status '{Status}', attempts {AttemptCount}/{maxAttempts}).");
+        }
+
+        if (NextAttemptAt is not { } due || due > now)
+        {
+            throw new DomainException("payment.auto_retry_not_due", "Payment is not due for an automatic retry yet.");
+        }
+
+        RequeueForRetry(now, $"Automatic retry scheduled (attempt {AttemptCount + 1} of {maxAttempts}).");
+    }
+
     public void ReleaseExpiredLease(DateTimeOffset now)
     {
         EnsureStatus(PaymentStatus.Processing, nameof(ReleaseExpiredLease));

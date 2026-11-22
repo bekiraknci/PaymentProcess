@@ -23,6 +23,7 @@ public sealed class ChargeProcessor(IOptionsMonitor<ScenarioOptions> options, IL
 {
     private readonly ConcurrentDictionary<string, StoredCharge> _approved = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, int> _flakyFailures = new(StringComparer.Ordinal);
 
     public async Task<ChargeResult> ProcessAsync(string idempotencyKey, ChargeRequest request, CancellationToken cancellationToken)
     {
@@ -43,7 +44,7 @@ public sealed class ChargeProcessor(IOptionsMonitor<ScenarioOptions> options, IL
                 return new ChargeResult(ChargeOutcome.Approved, stored.Response);
             }
 
-            var result = await DecideAsync(request, cancellationToken);
+            var result = await DecideAsync(idempotencyKey, request, cancellationToken);
             if (result.Outcome == ChargeOutcome.Approved)
             {
                 _approved[idempotencyKey] = new StoredCharge(fingerprint, result.Response!);
@@ -58,13 +59,19 @@ public sealed class ChargeProcessor(IOptionsMonitor<ScenarioOptions> options, IL
         }
     }
 
-    private async Task<ChargeResult> DecideAsync(ChargeRequest request, CancellationToken cancellationToken)
+    private async Task<ChargeResult> DecideAsync(string idempotencyKey, ChargeRequest request, CancellationToken cancellationToken)
     {
         var settings = options.CurrentValue;
 
+        if (request.Amount == settings.FlakyAmount &&
+            _flakyFailures.AddOrUpdate(idempotencyKey, 1, (_, count) => count + 1) <= settings.FlakyFailuresPerKey)
+        {
+            return new ChargeResult(ChargeOutcome.Unavailable);
+        }
+
         if (request.Amount == settings.AlwaysTimeoutAmount || Random.Shared.NextDouble() < settings.TimeoutRate)
         {
-            await Task.Delay(settings.TimeoutDelayMs, cancellationToken);
+            await Task.Delay(settings.TimeoutDelayMs, CancellationToken.None);
             return new ChargeResult(ChargeOutcome.Timeout);
         }
 

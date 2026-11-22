@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PaymentSystem.Api.Contracts;
 using PaymentSystem.Api.RateLimiting;
 using PaymentSystem.Api.Security;
 using PaymentSystem.Application.Authorization;
@@ -178,9 +179,3 @@ public sealed class PaymentsController : ApiControllerBase
             : Problem(result.Error);
     }
 }
-
-/// <summary>Payment submission request.</summary>
-/// <param name="ProviderId">Identifier of an active payment provider.</param>
-/// <param name="Amount">Amount greater than zero with at most two decimal places.</param>
-/// <param name="Currency">ISO 4217 currency code: TRY, USD, EUR or GBP.</param>
-public sealed record CreatePaymentRequest(Guid ProviderId, decimal Amount, string Currency);

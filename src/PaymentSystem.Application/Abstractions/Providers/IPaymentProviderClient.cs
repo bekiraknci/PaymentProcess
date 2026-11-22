@@ -9,13 +9,14 @@ public enum ProviderChargeStatus
     Unavailable
 }
 
-public sealed record ProviderChargeResult(ProviderChargeStatus Status, string? TransactionId, string? Reason)
+public sealed record ProviderChargeResult(ProviderChargeStatus Status, string? TransactionId, string? Reason, TimeSpan? RetryAfter = null)
 {
     public static ProviderChargeResult Approved(string transactionId) => new(ProviderChargeStatus.Approved, transactionId, null);
 
     public static ProviderChargeResult Declined(string reason) => new(ProviderChargeStatus.Declined, null, reason);
 
-    public static ProviderChargeResult Unavailable(string reason) => new(ProviderChargeStatus.Unavailable, null, reason);
+    public static ProviderChargeResult Unavailable(string reason, TimeSpan? retryAfter = null) =>
+        new(ProviderChargeStatus.Unavailable, null, reason, retryAfter);
 }
 
 public interface IPaymentProviderClient

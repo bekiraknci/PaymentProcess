@@ -56,6 +56,13 @@ internal sealed class InMemoryPaymentRepository : IPaymentRepository
     public Task<IReadOnlyList<Guid>> GetPendingIdsAsync(int take, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Guid>>(Items.Where(p => p.Status == PaymentStatus.Pending).Select(p => p.Id).Take(take).ToList());
 
+    public Task<IReadOnlyList<Payment>> GetDueForAutomaticRetryAsync(DateTimeOffset now, int maxAttempts, int take, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Payment>>(Items
+            .Where(p => p.Status == PaymentStatus.Failed && p.NextAttemptAt <= now && p.AttemptCount < maxAttempts)
+            .OrderBy(p => p.NextAttemptAt)
+            .Take(take)
+            .ToList());
+
     public Task<IReadOnlyList<Payment>> GetExpiredProcessingAsync(DateTimeOffset now, int take, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Payment>>(Items.Where(p => p.IsLeaseExpired(now)).Take(take).ToList());
 

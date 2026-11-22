@@ -19,7 +19,7 @@ public sealed class ProcessPaymentHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly StubProviderClient _provider = new(ProviderChargeResult.Approved("txn_1"));
     private readonly FixedTimeProvider _time = new(Now);
-    private readonly PaymentProcessingOptions _options = new() { MaxAutomaticAttempts = 3, RetryBaseDelayMinutes = 1 };
+    private readonly PaymentProcessingOptions _options = new() { MaxAutomaticAttempts = 3, RetryBaseDelaySeconds = 60 };
 
     private ProcessPaymentHandler CreateHandler() => new(
         _payments,
@@ -88,6 +88,28 @@ public sealed class ProcessPaymentHandlerTests
         outcome.Should().Be(ProcessPaymentOutcome.Failed);
         payment.Status.Should().Be(PaymentStatus.Failed);
         payment.FailureReason.Should().Contain("insufficient_funds");
+        payment.NextAttemptAt.Should().Be(Now.AddMinutes(2));
+    }
+
+    [Fact]
+    public async Task Open_circuit_postpones_the_next_attempt_until_the_circuit_can_close()
+    {
+        var payment = AddPendingPayment();
+        _provider.Result = ProviderChargeResult.Unavailable("Provider circuit is open.", TimeSpan.FromMinutes(10));
+
+        await CreateHandler().HandleAsync(payment.Id, CancellationToken.None);
+
+        payment.NextAttemptAt.Should().Be(Now.AddMinutes(10));
+    }
+
+    [Fact]
+    public async Task Retry_after_shorter_than_backoff_keeps_the_backoff()
+    {
+        var payment = AddPendingPayment();
+        _provider.Result = ProviderChargeResult.Unavailable("Provider circuit is open.", TimeSpan.FromSeconds(15));
+
+        await CreateHandler().HandleAsync(payment.Id, CancellationToken.None);
+
         payment.NextAttemptAt.Should().Be(Now.AddMinutes(2));
     }
 

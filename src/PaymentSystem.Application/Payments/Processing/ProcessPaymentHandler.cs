@@ -58,6 +58,9 @@ public sealed class ProcessPaymentHandler(
         return outcome;
     }
 
+    private static DateTimeOffset? NotBefore(DateTimeOffset? scheduled, DateTimeOffset now, TimeSpan? retryAfter) =>
+        scheduled is { } next && retryAfter is { } wait && now + wait > next ? now + wait : scheduled;
+
     private ProcessPaymentOutcome ApplyResult(Payment payment, ProviderChargeResult result, DateTimeOffset now)
     {
         switch (result.Status)
@@ -71,7 +74,7 @@ public sealed class ProcessPaymentHandler(
                 return ProcessPaymentOutcome.Failed;
 
             default:
-                payment.Fail($"Provider unavailable: {result.Reason}", options.Value.NextAttemptAfter(payment.AttemptCount, now), now);
+                payment.Fail($"Provider unavailable: {result.Reason}", NotBefore(options.Value.NextAttemptAfter(payment.AttemptCount, now), now, result.RetryAfter), now);
                 return ProcessPaymentOutcome.Failed;
         }
     }

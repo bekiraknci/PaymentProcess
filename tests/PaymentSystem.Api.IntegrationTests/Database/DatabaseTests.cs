@@ -9,6 +9,7 @@ using PaymentSystem.Domain.Payments;
 
 namespace PaymentSystem.Api.IntegrationTests.Database;
 
+[Collection(ApiCollection.Name)]
 public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     private async Task<List<T>> QueryAsync<T>(string sql, Func<SqlDataReader, T> map)
@@ -86,7 +87,7 @@ public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(facto
         byName["IX_Payments_Status_NextAttemptAt"].Keys.Should().Be("Status,NextAttemptAt");
         byName["IX_Payments_Status_CreatedAt"].Keys.Should().Be("Status,CreatedAt");
         byName["IX_Payments_ProviderId_CreatedAt"].Keys.Should().Be("ProviderId,CreatedAt");
-        byName["IX_Payments_ProviderId_CreatedAt"].Includes.Split(',').Should().BeEquivalentTo("Status", "Amount");
+        byName["IX_Payments_ProviderId_CreatedAt"].Includes.Split(',').Should().BeEquivalentTo("Status", "Amount", "Currency");
         byName["IX_Payments_Processing_LockedUntil"].Filter.Should().Contain("Processing");
         byName["UX_Payments_UserId_IdempotencyKey"].Unique.Should().BeTrue();
         byName["UX_Payments_UserId_IdempotencyKey"].Filter.Should().Contain("IdempotencyKey");
@@ -187,7 +188,7 @@ public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(facto
             ["pending pickup"] = "SELECT TOP (100) Id FROM dbo.Payments WHERE Status = N'Pending' ORDER BY CreatedAt",
             ["expired leases"] = "SELECT TOP (100) Id FROM dbo.Payments WHERE Status = N'Processing' AND LockedUntil <= SYSDATETIMEOFFSET()",
             ["retry job"] = "SELECT TOP (100) Id FROM dbo.Payments WHERE Status = N'Failed' AND NextAttemptAt <= SYSDATETIMEOFFSET()",
-            ["report range"] = "SELECT ProviderId, Status, Amount FROM dbo.Payments WHERE ProviderId = '0196a000-0000-7000-8000-000000000001' AND CreatedAt >= '2026-01-01' AND CreatedAt < '2027-01-01'",
+            ["report range"] = "SELECT ProviderId, CreatedAt, Status, Currency, Amount FROM dbo.Payments WHERE ProviderId = '0196a000-0000-7000-8000-000000000001' AND CreatedAt >= '2026-01-01' AND CreatedAt < '2027-01-01'",
             ["history"] = "SELECT PaymentId, ChangedAt FROM dbo.PaymentStatusHistory WHERE PaymentId = '0196a000-0000-7000-8000-000000000001' ORDER BY ChangedAt"
         };
 
@@ -212,6 +213,10 @@ public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(facto
 
             plan.Should().Contain("Index Seek", $"'{name}' must seek an index");
             plan.Should().NotContain("PhysicalOp=\"Table Scan\"", $"'{name}' must not scan the table");
+            if (name == "report range")
+            {
+                plan.Should().NotContain("Lookup=\"1\"", "the report index must cover every column the stored procedure reads");
+            }
         }
     }
 }

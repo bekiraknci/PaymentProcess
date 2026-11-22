@@ -7,7 +7,6 @@ using FluentAssertions;
 
 namespace PaymentSystem.Api.IntegrationTests.Infrastructure;
 
-[Collection(ApiCollection.Name)]
 public abstract class ApiTestBase(PaymentApiFactory factory)
 {
     public const string AdminEmail = "admin@test.com";

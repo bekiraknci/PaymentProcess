@@ -8,6 +8,8 @@ using PaymentSystem.Application.Abstractions.Persistence;
 using PaymentSystem.Application.Abstractions.Providers;
 using PaymentSystem.Application.Abstractions.Security;
 using PaymentSystem.Application.Payments.Processing;
+using PaymentSystem.Application.Payments.Retry;
+using PaymentSystem.Application.Reports;
 using PaymentSystem.Infrastructure.Persistence;
 using PaymentSystem.Infrastructure.Persistence.Interceptors;
 using PaymentSystem.Infrastructure.Persistence.Queries;
@@ -51,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentProviderRepository, PaymentProviderRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPaymentQueries, PaymentQueries>();
+        services.AddScoped<IReportingQueries, ReportingQueries>();
     }
 
     private static void AddSecurity(this IServiceCollection services, IConfiguration configuration)
@@ -70,8 +73,14 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<RetryJobOptions>()
+            .Bind(configuration.GetSection(RetryJobOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddSingleton<IPaymentQueue, ChannelPaymentQueue>();
         services.AddHostedService<PaymentProcessingWorker>();
+        services.AddHostedService<FailedPaymentRetryJob>();
     }
 
     private static void AddPaymentProviderClient(this IServiceCollection services, IConfiguration configuration)
@@ -103,9 +112,9 @@ public static class DependencyInjection
                 options.Retry.Delay = TimeSpan.FromMilliseconds(500);
 
                 options.CircuitBreaker.SamplingDuration = attemptTimeout * 2;
-                options.CircuitBreaker.MinimumThroughput = 5;
+                options.CircuitBreaker.MinimumThroughput = providerOptions.CircuitBreakerMinimumThroughput;
                 options.CircuitBreaker.FailureRatio = 0.5;
-                options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+                options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(providerOptions.CircuitBreakerBreakSeconds);
             });
     }
 }
