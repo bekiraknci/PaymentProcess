@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using PaymentSystem.Application.Abstractions.Security;
@@ -13,15 +14,16 @@ internal static class AuthenticationSetup
 {
     public const string AdminOnlyPolicy = "AdminOnly";
 
-    public static IServiceCollection AddApiAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
-        var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
-            ?? throw new InvalidOperationException("JWT configuration is missing.");
-
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+            .AddJwtBearer();
+
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtOptions>>((options, jwtOptions) =>
             {
+                var jwt = jwtOptions.Value;
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -31,7 +33,10 @@ internal static class AuthenticationSetup
                     ValidAudience = jwt.Audience,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = JwtTokenService.CreateSigningKey(jwt.SigningKey),
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                     ValidateLifetime = true,
+                    RequireExpirationTime = true,
+                    RequireSignedTokens = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
                     NameClaimType = JwtRegisteredClaimNames.Email,
                     RoleClaimType = JwtTokenService.RoleClaimType

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using PaymentSystem.Api.RateLimiting;
 using PaymentSystem.Application.Abstractions.Security;
 using PaymentSystem.Application.Auth.Login;
 using PaymentSystem.Application.Authorization;
@@ -19,8 +21,11 @@ public sealed class AuthController : ApiControllerBase
     /// <response code="200">Credentials are valid; the access token is returned.</response>
     /// <response code="400">Email or password is missing or malformed.</response>
     /// <response code="401">Email or password is incorrect.</response>
+    /// <response code="429">Too many login attempts from this client; retry after the `Retry-After` seconds.</response>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

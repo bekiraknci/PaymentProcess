@@ -86,13 +86,30 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("LockedUntil")
+                        .HasDatabaseName("IX_Payments_Processing_LockedUntil")
+                        .HasFilter("[Status] = N'Processing'");
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("CX_Payments_CreatedAt_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("CreatedAt", "Id"));
+
                     b.HasIndex("ProviderId", "CreatedAt")
                         .HasDatabaseName("IX_Payments_ProviderId_CreatedAt");
 
                     SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ProviderId", "CreatedAt"), new[] { "Status" });
 
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("IX_Payments_Status_CreatedAt");
+
                     b.HasIndex("Status", "NextAttemptAt")
                         .HasDatabaseName("IX_Payments_Status_NextAttemptAt");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_Payments_UserId_CreatedAt");
 
                     b.HasIndex("UserId", "IdempotencyKey")
                         .IsUnique()
@@ -102,7 +119,18 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "Status", "CreatedAt")
                         .HasDatabaseName("IX_Payments_UserId_Status_CreatedAt");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Payments_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Payments_AttemptCount_NonNegative", "[AttemptCount] >= 0");
+
+                            t.HasCheckConstraint("CK_Payments_Completed_HasTransaction", "[Status] <> N'Completed' OR [ProviderTransactionId] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Payments_Currency_Format", "[Currency] COLLATE Latin1_General_BIN LIKE '[A-Z][A-Z][A-Z]'");
+
+                            t.HasCheckConstraint("CK_Payments_Status", "[Status] IN (N'Pending', N'Processing', N'Completed', N'Failed')");
+                        });
                 });
 
             modelBuilder.Entity("PaymentSystem.Domain.Payments.PaymentStatusHistory", b =>
@@ -134,6 +162,13 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("ChangedAt", "Id")
+                        .HasDatabaseName("CX_PaymentStatusHistory_ChangedAt_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("ChangedAt", "Id"));
 
                     b.HasIndex("PaymentId", "ChangedAt")
                         .HasDatabaseName("IX_PaymentStatusHistory_PaymentId_ChangedAt");

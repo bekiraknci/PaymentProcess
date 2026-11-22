@@ -54,7 +54,7 @@ internal sealed class FakePaymentProviderClient(HttpClient httpClient, ILogger<F
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Provider is unreachable for payment {PaymentId}.", request.PaymentId);
+            logger.LogWarning("Provider is unreachable for payment {PaymentId}: {Error}", request.PaymentId, ex.Message);
             return ProviderChargeResult.Unavailable("Provider is unreachable.");
         }
     }

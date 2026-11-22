@@ -52,7 +52,7 @@ internal sealed class PaymentProcessingWorker(
             var handler = scope.ServiceProvider.GetRequiredService<ProcessPaymentHandler>();
             await handler.HandleAsync(paymentId, stoppingToken);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (Exception) when (stoppingToken.IsCancellationRequested)
         {
             logger.LogInformation("Shutdown requested while processing payment {PaymentId}; its lease will expire and it will be recovered.", paymentId);
         }
@@ -95,7 +95,7 @@ internal sealed class PaymentProcessingWorker(
                 logger.LogInformation("Queued {Count} pending payment(s) from the database.", pendingIds.Count);
             }
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (Exception) when (stoppingToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
