@@ -16,6 +16,7 @@ using PaymentSystem.Api.IntegrationTests.Infrastructure;
 
 namespace PaymentSystem.Api.IntegrationTests.Security;
 
+[Collection(ApiCollection.Name)]
 public sealed class SecurityTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     private const string AdminSub = "0196a000-0000-7000-8000-000000000101";

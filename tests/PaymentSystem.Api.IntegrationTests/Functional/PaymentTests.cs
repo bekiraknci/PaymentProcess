@@ -7,6 +7,7 @@ using PaymentSystem.Api.IntegrationTests.Infrastructure;
 
 namespace PaymentSystem.Api.IntegrationTests.Functional;
 
+[Collection(ApiCollection.Name)]
 public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     [Fact]

@@ -9,6 +9,7 @@ using PaymentSystem.Domain.Payments;
 
 namespace PaymentSystem.Api.IntegrationTests.Database;
 
+[Collection(ApiCollection.Name)]
 public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     private async Task<List<T>> QueryAsync<T>(string sql, Func<SqlDataReader, T> map)
