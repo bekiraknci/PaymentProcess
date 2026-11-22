@@ -42,20 +42,43 @@ public sealed class ProcessPaymentHandler(
             return ProcessPaymentOutcome.Skipped;
         }
 
-        var result = await providerClient.ChargeAsync(
-            new ProviderChargeRequest(payment.Id, payment.Money.Amount, payment.Money.Currency),
-            cancellationToken);
+        var result = await ChargeAsync(payment, cancellationToken);
 
         var now = timeProvider.GetUtcNow();
         var outcome = ApplyResult(payment, result, now);
 
-        await unitOfWork.SaveChangesAsync(CancellationToken.None);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            logger.LogWarning(
+                "Payment {PaymentId} changed while attempt #{Attempt} was in flight (lease expired?); the result was discarded and the payment will be reconciled by its next attempt.",
+                paymentId, payment.AttemptCount);
+            return ProcessPaymentOutcome.Skipped;
+        }
 
         logger.LogInformation(
             "Payment {PaymentId} attempt #{Attempt} finished as {Status}.",
             payment.Id, payment.AttemptCount, payment.Status);
 
         return outcome;
+    }
+
+    private async Task<ProviderChargeResult> ChargeAsync(Payment payment, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await providerClient.ChargeAsync(
+                new ProviderChargeRequest(payment.Id, payment.Money.Amount, payment.Money.Currency),
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Provider call for payment {PaymentId} failed unexpectedly.", payment.Id);
+            return ProviderChargeResult.Unavailable("Unexpected error while calling the provider.");
+        }
     }
 
     private static DateTimeOffset? NotBefore(DateTimeOffset? scheduled, DateTimeOffset now, TimeSpan? retryAfter) =>
