@@ -41,7 +41,10 @@ public sealed class GetDailyPaymentReportValidator : AbstractValidator<GetDailyP
     public GetDailyPaymentReportValidator()
     {
         RuleFor(x => x.From).NotNull();
-        RuleFor(x => x.To).NotNull();
+        RuleFor(x => x.To)
+            .NotNull()
+            .LessThan(DateOnly.MaxValue)
+            .WithMessage($"'To' must be before {DateOnly.MaxValue:yyyy-MM-dd}.");
 
         RuleFor(x => x.To)
             .GreaterThanOrEqualTo(x => x.From)

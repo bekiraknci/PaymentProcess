@@ -265,6 +265,9 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
     [InlineData("pageSize=0")]
     [InlineData("pageSize=101")]
     [InlineData("status=Unknown")]
+    [InlineData("status=99")]
+    [InlineData("page=2147483647&pageSize=100")]
+    [InlineData("page=21474838&pageSize=100")]
     public async Task Invalid_list_parameters_return_400(string query)
     {
         var response = await (await AsUser()).GetAsync($"/api/payments?{query}");

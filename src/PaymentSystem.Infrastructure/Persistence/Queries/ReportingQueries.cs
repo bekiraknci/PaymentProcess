@@ -29,6 +29,7 @@ internal sealed class ReportingQueries(AppDbContext db) : IReportingQueries
         public string Status { get; init; } = string.Empty;
         public string Currency { get; init; } = string.Empty;
         public long PaymentCount { get; init; }
+        [Precision(38, 2)]
         public decimal TotalAmount { get; init; }
     }
 }
