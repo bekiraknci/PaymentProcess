@@ -88,6 +88,15 @@ public static class DependencyInjection
         services.AddOptions<PaymentProviderOptions>()
             .Bind(configuration.GetSection(PaymentProviderOptions.SectionName))
             .ValidateDataAnnotations()
+            .Validate(
+                o => o.AttemptTimeoutSeconds <= o.TotalTimeoutSeconds,
+                "PaymentProvider:AttemptTimeoutSeconds must not exceed PaymentProvider:TotalTimeoutSeconds.")
+            .ValidateOnStart();
+
+        services.AddOptions<PaymentProcessingOptions>()
+            .Validate<IOptions<PaymentProviderOptions>>(
+                (processing, provider) => processing.LeaseSeconds > provider.Value.TotalTimeoutSeconds,
+                "PaymentProcessing:LeaseSeconds must be greater than PaymentProvider:TotalTimeoutSeconds, otherwise a payment can be released and charged again while its provider call is still running.")
             .ValidateOnStart();
 
         services
@@ -106,7 +115,12 @@ public static class DependencyInjection
                 options.AttemptTimeout.Timeout = attemptTimeout;
                 options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(providerOptions.TotalTimeoutSeconds);
 
-                options.Retry.MaxRetryAttempts = providerOptions.MaxRetryAttempts;
+                options.Retry.MaxRetryAttempts = Math.Max(1, providerOptions.MaxRetryAttempts);
+                if (providerOptions.MaxRetryAttempts == 0)
+                {
+                    options.Retry.ShouldHandle = _ => PredicateResult.False();
+                }
+
                 options.Retry.BackoffType = DelayBackoffType.Exponential;
                 options.Retry.UseJitter = true;
                 options.Retry.Delay = TimeSpan.FromMilliseconds(500);
