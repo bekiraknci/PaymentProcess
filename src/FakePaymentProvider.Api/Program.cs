@@ -46,3 +46,5 @@ app.MapPost("/api/charges", async (
     });
 
 await app.RunAsync();
+
+public partial class Program;
