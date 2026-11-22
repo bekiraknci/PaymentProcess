@@ -24,13 +24,13 @@ public sealed class PaymentProcessingOptions
     [Range(1, 10)]
     public int MaxAutomaticAttempts { get; init; } = 3;
 
-    [Range(1, 1440)]
-    public int RetryBaseDelayMinutes { get; init; } = 1;
+    [Range(1, 86_400)]
+    public int RetryBaseDelaySeconds { get; init; } = 60;
 
     public TimeSpan Lease => TimeSpan.FromSeconds(LeaseSeconds);
 
     public DateTimeOffset? NextAttemptAfter(int attemptCount, DateTimeOffset now) =>
         attemptCount < MaxAutomaticAttempts
-            ? now.AddMinutes(RetryBaseDelayMinutes * Math.Pow(2, attemptCount))
+            ? now.AddSeconds(RetryBaseDelaySeconds * Math.Pow(2, attemptCount))
             : null;
 }

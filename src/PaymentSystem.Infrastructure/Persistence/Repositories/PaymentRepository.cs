@@ -21,6 +21,13 @@ internal sealed class PaymentRepository(AppDbContext db) : IPaymentRepository
             .Take(take)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Payment>> GetDueForAutomaticRetryAsync(DateTimeOffset now, int maxAttempts, int take, CancellationToken cancellationToken = default) =>
+        await db.Payments
+            .Where(p => p.Status == PaymentStatus.Failed && p.NextAttemptAt != null && p.NextAttemptAt <= now && p.AttemptCount < maxAttempts)
+            .OrderBy(p => p.NextAttemptAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Payment>> GetExpiredProcessingAsync(DateTimeOffset now, int take, CancellationToken cancellationToken = default) =>
         await db.Payments
             .Where(p => p.Status == PaymentStatus.Processing && (p.LockedUntil == null || p.LockedUntil <= now))

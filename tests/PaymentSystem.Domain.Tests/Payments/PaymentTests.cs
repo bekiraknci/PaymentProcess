@@ -136,6 +136,60 @@ public sealed class PaymentTests
     }
 
     [Fact]
+    public void Automatic_retry_requeues_due_failed_payment_with_attempt_in_reason()
+    {
+        var payment = NewPayment();
+        payment.StartProcessing(Now, Lease);
+        payment.Fail("Provider unavailable", Now.AddMinutes(2), Now);
+
+        payment.RequeueForAutomaticRetry(Now.AddMinutes(2), maxAttempts: 3);
+
+        payment.Status.Should().Be(PaymentStatus.Pending);
+        payment.History.Last().Reason.Should().Contain("attempt 2 of 3");
+    }
+
+    [Fact]
+    public void Automatic_retry_is_rejected_before_it_is_due()
+    {
+        var payment = NewPayment();
+        payment.StartProcessing(Now, Lease);
+        payment.Fail("Provider unavailable", Now.AddMinutes(2), Now);
+
+        payment.Invoking(p => p.RequeueForAutomaticRetry(Now.AddMinutes(1), 3))
+            .Should().Throw<DomainException>().Which.Code.Should().Be("payment.auto_retry_not_due");
+    }
+
+    [Fact]
+    public void Automatic_retry_is_rejected_when_no_next_attempt_was_scheduled()
+    {
+        var payment = NewPayment();
+        payment.StartProcessing(Now, Lease);
+        payment.Fail("Provider unavailable", null, Now);
+
+        payment.Invoking(p => p.RequeueForAutomaticRetry(Now.AddHours(1), 3))
+            .Should().Throw<DomainException>().Which.Code.Should().Be("payment.auto_retry_not_due");
+    }
+
+    [Fact]
+    public void Automatic_retry_is_rejected_when_attempts_are_exhausted()
+    {
+        var payment = NewPayment();
+        for (var i = 0; i < 3; i++)
+        {
+            if (i > 0)
+            {
+                payment.RequeueForRetry(Now);
+            }
+
+            payment.StartProcessing(Now, Lease);
+            payment.Fail("Declined", Now, Now);
+        }
+
+        payment.Invoking(p => p.RequeueForAutomaticRetry(Now.AddHours(1), 3))
+            .Should().Throw<DomainException>().Which.Code.Should().Be("payment.auto_retry_exhausted");
+    }
+
+    [Fact]
     public void ReleaseExpiredLease_returns_stuck_payment_to_pending()
     {
         var payment = NewPayment();

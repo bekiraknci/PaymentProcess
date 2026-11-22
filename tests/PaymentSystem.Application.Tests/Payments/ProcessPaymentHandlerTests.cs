@@ -19,7 +19,7 @@ public sealed class ProcessPaymentHandlerTests
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly StubProviderClient _provider = new(ProviderChargeResult.Approved("txn_1"));
     private readonly FixedTimeProvider _time = new(Now);
-    private readonly PaymentProcessingOptions _options = new() { MaxAutomaticAttempts = 3, RetryBaseDelayMinutes = 1 };
+    private readonly PaymentProcessingOptions _options = new() { MaxAutomaticAttempts = 3, RetryBaseDelaySeconds = 60 };
 
     private ProcessPaymentHandler CreateHandler() => new(
         _payments,

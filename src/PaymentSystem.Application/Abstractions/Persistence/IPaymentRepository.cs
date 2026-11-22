@@ -10,6 +10,8 @@ public interface IPaymentRepository
 
     Task<IReadOnlyList<Guid>> GetPendingIdsAsync(int take, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Payment>> GetDueForAutomaticRetryAsync(DateTimeOffset now, int maxAttempts, int take, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Payment>> GetExpiredProcessingAsync(DateTimeOffset now, int take, CancellationToken cancellationToken = default);
 
     void Add(Payment payment);
