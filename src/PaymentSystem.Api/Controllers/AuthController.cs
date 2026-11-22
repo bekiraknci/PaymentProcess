@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PaymentSystem.Api.Contracts;
 using PaymentSystem.Api.RateLimiting;
 using PaymentSystem.Application.Abstractions.Security;
 using PaymentSystem.Application.Auth.Login;
@@ -31,11 +32,11 @@ public sealed class AuthController : ApiControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     public async Task<IActionResult> Login(
-        [FromBody] LoginCommand command,
+        [FromBody] LoginRequest request,
         [FromServices] LoginHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.HandleAsync(command, cancellationToken);
+        var result = await handler.HandleAsync(new LoginCommand(request.Email, request.Password), cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
     }
 
