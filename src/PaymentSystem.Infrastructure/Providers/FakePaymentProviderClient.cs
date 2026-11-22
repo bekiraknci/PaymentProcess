@@ -42,7 +42,7 @@ internal sealed class FakePaymentProviderClient(HttpClient httpClient, ILogger<F
         {
             throw;
         }
-        catch (Exception ex) when (ex is TimeoutRejectedException or OperationCanceledException)
+        catch (Exception ex) when (IsTimeout(ex))
         {
             logger.LogWarning("Provider call for payment {PaymentId} timed out.", request.PaymentId);
             return ProviderChargeResult.Unavailable("Provider request timed out.");
@@ -57,6 +57,19 @@ internal sealed class FakePaymentProviderClient(HttpClient httpClient, ILogger<F
             logger.LogWarning("Provider is unreachable for payment {PaymentId}: {Error}", request.PaymentId, ex.Message);
             return ProviderChargeResult.Unavailable("Provider is unreachable.");
         }
+    }
+
+    private static bool IsTimeout(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is TimeoutRejectedException or TimeoutException or OperationCanceledException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private sealed record ChargeRequestBody(decimal Amount, string Currency, string Reference);

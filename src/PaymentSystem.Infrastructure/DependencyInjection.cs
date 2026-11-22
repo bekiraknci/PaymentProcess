@@ -112,9 +112,9 @@ public static class DependencyInjection
                 options.Retry.Delay = TimeSpan.FromMilliseconds(500);
 
                 options.CircuitBreaker.SamplingDuration = attemptTimeout * 2;
-                options.CircuitBreaker.MinimumThroughput = 5;
+                options.CircuitBreaker.MinimumThroughput = providerOptions.CircuitBreakerMinimumThroughput;
                 options.CircuitBreaker.FailureRatio = 0.5;
-                options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+                options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(providerOptions.CircuitBreakerBreakSeconds);
             });
     }
 }
