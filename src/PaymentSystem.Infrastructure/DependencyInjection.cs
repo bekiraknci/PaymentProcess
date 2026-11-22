@@ -9,6 +9,7 @@ using PaymentSystem.Application.Abstractions.Providers;
 using PaymentSystem.Application.Abstractions.Security;
 using PaymentSystem.Application.Payments.Processing;
 using PaymentSystem.Application.Payments.Retry;
+using PaymentSystem.Application.Reports;
 using PaymentSystem.Infrastructure.Persistence;
 using PaymentSystem.Infrastructure.Persistence.Interceptors;
 using PaymentSystem.Infrastructure.Persistence.Queries;
@@ -52,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentProviderRepository, PaymentProviderRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPaymentQueries, PaymentQueries>();
+        services.AddScoped<IReportingQueries, ReportingQueries>();
     }
 
     private static void AddSecurity(this IServiceCollection services, IConfiguration configuration)
