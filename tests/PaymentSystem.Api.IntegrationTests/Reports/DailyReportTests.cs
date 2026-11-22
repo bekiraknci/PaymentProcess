@@ -97,6 +97,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
     [InlineData("from=2026-10-05&to=2026-10-01", "to")]
     [InlineData("from=2025-01-01&to=2026-01-05", "to")]
     [InlineData("from=not-a-date&to=2026-10-01", "from")]
+    [InlineData("from=9999-12-30&to=9999-12-31", "to")]
     public async Task Invalid_parameters_return_field_errors(string query, string field)
     {
         var response = await (await AsAdmin()).GetAsync($"/api/reports/daily-payments?{query}");

@@ -239,13 +239,14 @@ dotnet test
 | Project | Tests | Scope |
 |---|---|---|
 | `PaymentSystem.Domain.Tests` | 30 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules |
-| `PaymentSystem.Application.Tests` | 26 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op and lost claim; backoff; retry job selection; manual retry |
-| `PaymentSystem.Api.IntegrationTests` | 129 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
+| `PaymentSystem.Application.Tests` | 29 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op, lost claim, unexpected provider errors and results that arrive after a lost lease; backoff; retry job selection; manual retry |
+| `PaymentSystem.Api.IntegrationTests` | 146 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
 
 The integration tests cover:
 - **Functional:** every endpoint and status code, and the Swagger contract.
 - **Security:** forged, expired and tampered tokens; wrong issuer or audience; `alg: none`; IDOR; mass assignment; injection payloads; error leakage; security headers; rate limits.
 - **Database:** migrations and model in sync; column types; index shapes; check constraints; FK restrict; rowversion concurrency; execution plans.
+- **Provider client:** response mapping, malformed or empty provider bodies, retry behaviour, and startup validation of timeout and lease settings.
 - **Reports:** exact aggregates, UTC day boundaries, validation, admin-only access.
 - **Load:** 50 identical requests with one key create exactly one payment; 600 concurrent submissions are processed exactly once; concurrent retries.
 - **End-to-end:** the API calls the real FakePaymentProvider over HTTP on Kestrel. Covered: approval, decline with automatic retries up to the cap, outage, timeout, recovery by the retry job, manual retry past the cap, a full multi-role scenario, and report-vs-database reconciliation.
@@ -263,14 +264,14 @@ Integration tests create a throw-away database `PaymentSystem_IT_<guid>` and dro
 | `Jwt:AccessTokenLifetimeMinutes` | 60 | Token lifetime |
 | `Database:MigrateOnStartup` | `true` in Development | Apply migrations on startup |
 | `PaymentProcessing:WorkerCount` | 2 | Concurrent queue consumers |
-| `PaymentProcessing:LeaseSeconds` | 120 | Processing lease; expired leases are recovered |
+| `PaymentProcessing:LeaseSeconds` | 120 | Processing lease; expired leases are recovered. Must be greater than `PaymentProvider:TotalTimeoutSeconds` (checked at startup) so a payment is never released while its provider call is still running |
 | `PaymentProcessing:PollIntervalSeconds` | 10 | Database safety-net poll |
 | `PaymentProcessing:QueueCapacity` | 10000 | In-memory queue size; overflow is picked up by the poll |
 | `PaymentProcessing:MaxAutomaticAttempts` | 3 | Attempts after which no automatic retry is scheduled |
 | `PaymentProcessing:RetryBaseDelaySeconds` | 60 | Backoff: `base × 2^attempt` seconds (2, then 4 minutes) |
 | `RetryJob:Enabled`, `IntervalSeconds`, `BatchSize` | `true`, 60, 100 | Recurring failed-payment retry job (`PeriodicTimer`) |
 | `PaymentProvider:BaseUrl` | `http://localhost:5100` | Provider address |
-| `PaymentProvider:AttemptTimeoutSeconds`, `TotalTimeoutSeconds`, `MaxRetryAttempts` | 5, 20, 3 | HTTP resilience |
+| `PaymentProvider:AttemptTimeoutSeconds`, `TotalTimeoutSeconds`, `MaxRetryAttempts` | 5, 20, 3 | HTTP resilience. The attempt timeout cannot exceed the total timeout; `MaxRetryAttempts: 0` turns HTTP retries off |
 | `PaymentProvider:CircuitBreakerMinimumThroughput`, `CircuitBreakerBreakSeconds` | 5, 15 | Circuit breaker |
 | `RateLimiting:Enabled` | `true` | Turns every rate limit on or off |
 | `RateLimiting:LoginPermitLimit`, `LoginWindowSeconds` | 10, 60 | Login attempts per IP |

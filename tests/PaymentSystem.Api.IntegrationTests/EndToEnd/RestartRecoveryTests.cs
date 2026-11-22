@@ -31,6 +31,7 @@ public sealed class RestartRecoveryTests(ITestOutputHelper output)
         {
             ["PaymentProcessing:WorkerCount"] = "1",
             ["PaymentProcessing:LeaseSeconds"] = "10",
+            ["PaymentProvider:TotalTimeoutSeconds"] = "5",
             ["PaymentProcessing:PollIntervalSeconds"] = "60"
         });
 

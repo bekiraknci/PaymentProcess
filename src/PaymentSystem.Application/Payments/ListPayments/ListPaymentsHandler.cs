@@ -17,7 +17,11 @@ public sealed class ListPaymentsValidator : AbstractValidator<ListPaymentsQuery>
     public ListPaymentsValidator()
     {
         RuleFor(x => x.Status).IsInEnum().When(x => x.Status.HasValue);
-        RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
+        RuleFor(x => x.Page)
+            .GreaterThanOrEqualTo(1)
+            .Must((query, page) => (long)(page - 1) * query.PageSize <= int.MaxValue)
+            .WithMessage("'Page' is too large for the requested page size.")
+            .When(x => x.PageSize is >= 1 and <= MaxPageSize);
         RuleFor(x => x.PageSize).InclusiveBetween(1, MaxPageSize);
     }
 }

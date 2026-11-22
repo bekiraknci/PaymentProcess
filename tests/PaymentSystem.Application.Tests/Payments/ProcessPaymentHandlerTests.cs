@@ -170,4 +170,66 @@ public sealed class ProcessPaymentHandlerTests
 
         result.Error!.Type.Should().Be(ErrorType.NotFound);
     }
+
+    private sealed class DelegateProviderClient(Func<ProviderChargeResult> charge) : IPaymentProviderClient
+    {
+        public Task<ProviderChargeResult> ChargeAsync(ProviderChargeRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(charge());
+    }
+
+    private ProcessPaymentHandler CreateHandler(IPaymentProviderClient client) => new(
+        _payments,
+        _unitOfWork,
+        client,
+        Options.Create(_options),
+        _time,
+        NullLogger<ProcessPaymentHandler>.Instance);
+
+    [Fact]
+    public async Task Unexpected_provider_exception_fails_the_payment_instead_of_leaving_it_processing()
+    {
+        var payment = AddPendingPayment();
+        var handler = CreateHandler(new DelegateProviderClient(() => throw new InvalidOperationException("boom")));
+
+        var outcome = await handler.HandleAsync(payment.Id, CancellationToken.None);
+
+        outcome.Should().Be(ProcessPaymentOutcome.Failed);
+        payment.Status.Should().Be(PaymentStatus.Failed);
+        payment.FailureReason.Should().Contain("Unexpected error");
+        payment.NextAttemptAt.Should().NotBeNull();
+        payment.LockedUntil.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Shutdown_during_provider_call_propagates_and_leaves_the_lease_for_recovery()
+    {
+        var payment = AddPendingPayment();
+        using var cts = new CancellationTokenSource();
+        var handler = CreateHandler(new DelegateProviderClient(() =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        }));
+
+        var act = () => handler.HandleAsync(payment.Id, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        payment.Status.Should().Be(PaymentStatus.Processing);
+    }
+
+    [Fact]
+    public async Task Concurrent_change_while_the_charge_is_in_flight_is_skipped_without_throwing()
+    {
+        var payment = AddPendingPayment();
+        var handler = CreateHandler(new DelegateProviderClient(() =>
+        {
+            _unitOfWork.BeforeSave = () => new ConcurrencyConflictException("changed", new Exception());
+            return ProviderChargeResult.Approved("txn_late");
+        }));
+
+        var outcome = await handler.HandleAsync(payment.Id, CancellationToken.None);
+
+        outcome.Should().Be(ProcessPaymentOutcome.Skipped);
+        _unitOfWork.SaveCount.Should().Be(1);
+    }
 }
