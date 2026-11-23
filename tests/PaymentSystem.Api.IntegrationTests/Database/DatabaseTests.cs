@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PaymentSystem.Api.IntegrationTests.Infrastructure;
 using PaymentSystem.Application.Abstractions.Persistence;
+using PaymentSystem.Application.Authorization;
 using PaymentSystem.Domain.Payments;
 
 namespace PaymentSystem.Api.IntegrationTests.Database;
@@ -41,6 +42,36 @@ public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(facto
 
         pending.Should().BeEmpty();
         hasModelChanges.Should().BeFalse("the model snapshot must match the entity configuration");
+    }
+
+    [Fact]
+    public async Task Seeded_permissions_match_the_policies_the_api_registers()
+    {
+        var names = await QueryAsync("SELECT Name FROM dbo.Permissions", r => r.GetString(0));
+
+        names.Should().BeEquivalentTo(Permissions.All);
+    }
+
+    [Fact]
+    public async Task Seeded_role_permissions_grant_admin_everything_and_user_create_and_view()
+    {
+        var grants = await QueryAsync("SELECT Role, PermissionName FROM dbo.RolePermissions", r => (Role: r.GetString(0), Permission: r.GetString(1)));
+
+        grants.Where(g => g.Role == "Admin").Select(g => g.Permission).Should().BeEquivalentTo(Permissions.All);
+        grants.Where(g => g.Role == "User").Select(g => g.Permission).Should().BeEquivalentTo(Permissions.PaymentsCreate, Permissions.PaymentsView);
+        grants.Should().OnlyContain(g => g.Role == "Admin" || g.Role == "User");
+    }
+
+    [Theory]
+    [InlineData("INSERT INTO dbo.RolePermissions (Role, PermissionName) VALUES (N'User', 'Payments.Refund')", 547)]
+    [InlineData("INSERT INTO dbo.RolePermissions (Role, PermissionName) VALUES (N'Auditor', 'Payments.View')", 547)]
+    [InlineData("INSERT INTO dbo.RolePermissions (Role, PermissionName) VALUES (N'User', 'Payments.View')", 2627)]
+    [InlineData("DELETE FROM dbo.Permissions WHERE Name = 'Payments.View'", 547)]
+    public async Task Role_permission_table_rejects_unknown_permissions_unknown_roles_and_duplicates(string sql, int expectedError)
+    {
+        var act = () => ExecuteAsync(sql);
+
+        (await act.Should().ThrowAsync<SqlException>()).Which.Number.Should().Be(expectedError);
     }
 
     [Fact]
