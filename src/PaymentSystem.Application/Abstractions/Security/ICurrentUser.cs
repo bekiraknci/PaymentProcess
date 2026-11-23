@@ -8,7 +8,9 @@ public interface ICurrentUser
 
     string? Email { get; }
 
-    bool IsAdmin { get; }
+    string? Role { get; }
+
+    IReadOnlyList<string> Permissions { get; }
 
     bool HasPermission(string permission);
 }

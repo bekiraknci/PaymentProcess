@@ -4,16 +4,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using PaymentSystem.Application.Abstractions.Security;
-using PaymentSystem.Application.Authorization;
-using PaymentSystem.Domain.Users;
 using PaymentSystem.Infrastructure.Security;
 
 namespace PaymentSystem.Api.Security;
 
 internal static class AuthenticationSetup
 {
-    public const string AdminOnlyPolicy = "AdminOnly";
-
     public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
         services
@@ -51,9 +47,8 @@ internal static class AuthenticationSetup
                 };
             });
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy(AdminOnlyPolicy, policy => policy.RequireRole(nameof(Role.Admin)))
-            .AddPermissionPolicies();
+        services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
@@ -72,17 +67,5 @@ internal static class AuthenticationSetup
         }
 
         return string.IsNullOrEmpty(value) ? null : value;
-    }
-
-    private static AuthorizationBuilder AddPermissionPolicies(this AuthorizationBuilder builder)
-    {
-        foreach (var permission in Permissions.All)
-        {
-            builder.AddPolicy(permission, policy => policy
-                .RequireAuthenticatedUser()
-                .RequireClaim(Permissions.ClaimType, permission));
-        }
-
-        return builder;
     }
 }

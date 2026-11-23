@@ -45,8 +45,10 @@ public static class SeedData
     [
         new { Name = AppPermissions.PaymentsCreate, Description = "Submit payment requests." },
         new { Name = AppPermissions.PaymentsView, Description = "View payments and their status history." },
+        new { Name = AppPermissions.PaymentsViewAll, Description = "View payments of every user, not only your own." },
         new { Name = AppPermissions.PaymentsProcess, Description = "Manually retry failed payments." },
-        new { Name = AppPermissions.ProvidersManage, Description = "Create, update, activate and deactivate payment providers." }
+        new { Name = AppPermissions.ProvidersManage, Description = "Create, update, activate and deactivate payment providers." },
+        new { Name = AppPermissions.ReportsView, Description = "Read the daily payment report." }
     ];
 
     internal static object[] RolePermissions() =>
@@ -55,6 +57,8 @@ public static class SeedData
         new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsView },
         new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsProcess },
         new { Role = Role.Admin, PermissionName = AppPermissions.ProvidersManage },
+        new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsViewAll },
+        new { Role = Role.Admin, PermissionName = AppPermissions.ReportsView },
         new { Role = Role.User, PermissionName = AppPermissions.PaymentsCreate },
         new { Role = Role.User, PermissionName = AppPermissions.PaymentsView }
     ];

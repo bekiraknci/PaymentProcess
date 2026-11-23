@@ -1,8 +1,7 @@
 using System.Security.Claims;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PaymentSystem.Application.Abstractions.Security;
-using PaymentSystem.Application.Authorization;
-using PaymentSystem.Domain.Users;
+using PaymentSystem.Infrastructure.Security;
 
 namespace PaymentSystem.Api.Security;
 
@@ -19,8 +18,11 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
 
     public string? Email => Principal?.FindFirstValue(JwtRegisteredClaimNames.Email);
 
-    public bool IsAdmin => Principal?.IsInRole(nameof(Role.Admin)) == true;
+    public string? Role => Principal?.FindFirstValue(JwtTokenService.RoleClaimType);
+
+    public IReadOnlyList<string> Permissions =>
+        Principal?.FindAll(Application.Authorization.Permissions.ClaimType).Select(c => c.Value).Distinct().Order(StringComparer.Ordinal).ToList() ?? [];
 
     public bool HasPermission(string permission) =>
-        Principal?.HasClaim(Permissions.ClaimType, permission) == true;
+        Principal?.HasClaim(Application.Authorization.Permissions.ClaimType, permission) == true;
 }
