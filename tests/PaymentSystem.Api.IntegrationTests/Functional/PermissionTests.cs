@@ -45,7 +45,7 @@ public sealed class PermissionTests : IAsyncLifetime
         var after = await LoginAsync(ApiTestBase.UserEmail, ApiTestBase.UserPassword);
         after.Permissions.Should().Contain(Permissions.ProvidersManage);
 
-        var me = await Client(after.Token).GetFromJsonAsync<JsonElement>("/api/auth/me");
+        var me = await Client(after.Token).GetDataAsync<JsonElement>("/api/auth/me");
         me.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()).Should().Contain(Permissions.ProvidersManage);
         (await Client(after.Token).GetAsync("/api/providers")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -61,7 +61,7 @@ public sealed class PermissionTests : IAsyncLifetime
     {
         var response = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { email, password });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = await response.Content.ReadDataAsync<JsonElement>();
         var permissions = body.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!).ToList();
         return (body.GetProperty("accessToken").GetString()!, permissions);
     }

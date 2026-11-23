@@ -21,9 +21,9 @@ public sealed class ProvidersController : ApiControllerBase
     /// <response code="401">The request has no valid access token.</response>
     /// <response code="403">The caller lacks the `Providers.Manage` permission.</response>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ProviderResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<ProviderResponse>>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromServices] ListProvidersHandler handler, CancellationToken cancellationToken) =>
-        Ok(await handler.HandleAsync(cancellationToken));
+        Success(await handler.HandleAsync(cancellationToken));
 
     /// <summary>
     /// Returns a single payment provider.
@@ -36,12 +36,12 @@ public sealed class ProvidersController : ApiControllerBase
     /// <response code="403">The caller lacks the `Providers.Manage` permission.</response>
     /// <response code="404">The provider does not exist.</response>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType<ProviderResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<ProviderResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> GetById(Guid id, [FromServices] GetProviderHandler handler, CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>
@@ -58,7 +58,7 @@ public sealed class ProvidersController : ApiControllerBase
     /// <response code="409">A provider with the same code already exists.</response>
     [HttpPost]
     [Consumes("application/json")]
-    [ProducesResponseType<ProviderResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiResponse<ProviderResponse>>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<IActionResult> Create(
@@ -68,7 +68,7 @@ public sealed class ProvidersController : ApiControllerBase
     {
         var result = await handler.HandleAsync(new CreateProviderCommand(request.Code, request.Name, request.BaseUrl, request.SupportedCurrencies, request.IsActive), cancellationToken);
         return result.IsSuccess
-            ? CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value)
+            ? SuccessCreated(nameof(GetById), new { id = result.Value.Id }, result.Value)
             : Problem(result.Error);
     }
 
@@ -86,7 +86,7 @@ public sealed class ProvidersController : ApiControllerBase
     /// <response code="404">The provider does not exist.</response>
     [HttpPut("{id:guid}")]
     [Consumes("application/json")]
-    [ProducesResponseType<ProviderResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<ProviderResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> Update(
@@ -96,7 +96,7 @@ public sealed class ProvidersController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(id, new UpdateProviderCommand(request.Name, request.BaseUrl, request.SupportedCurrencies), cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>

@@ -20,7 +20,7 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
         do
         {
             await Task.Delay(250);
-            payment = (await client.GetFromJsonAsync<PaymentDto>($"/api/payments/{id}", Json))!;
+            payment = (await client.GetDataAsync<PaymentDto>($"/api/payments/{id}", Json))!;
         }
         while (!condition(payment) && DateTime.UtcNow < deadline);
 
@@ -28,7 +28,7 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
     }
 
     private async Task<HistoryDto[]> History(HttpClient client, Guid id) =>
-        (await client.GetFromJsonAsync<HistoryDto[]>($"/api/payments/{id}/history", Json))!;
+        (await client.GetDataAsync<HistoryDto[]>($"/api/payments/{id}/history", Json))!;
 
     [Fact]
     public async Task Approved_payment_flows_through_the_real_provider_and_completes()
@@ -37,7 +37,7 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
 
         var created = await PostPayment(user, PaymentBody(125.50m, "USD"), Guid.NewGuid().ToString());
         created.StatusCode.Should().Be(HttpStatusCode.Created);
-        var payment = (await created.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var payment = (await created.Content.ReadDataAsync<PaymentDto>(Json))!;
 
         var final = await WaitUntil(user, payment.Id, p => p.Status == "Completed");
 
@@ -108,7 +108,7 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
                 "Automatic retry scheduled (attempt 3 of 3).");
 
         await Task.Delay(TimeSpan.FromSeconds(4));
-        var later = (await user.GetFromJsonAsync<PaymentDto>($"/api/payments/{payment.Id}", Json))!;
+        var later = (await user.GetDataAsync<PaymentDto>($"/api/payments/{payment.Id}", Json))!;
         later.AttemptCount.Should().Be(3, "the retry job must not pick up a payment that exhausted its attempts");
         later.Status.Should().Be("Failed");
     }
@@ -186,13 +186,13 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
             supportedCurrencies = new[] { "TRY", "USD" }
         });
         providerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var providerId = (await providerResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var providerId = (await providerResponse.Content.ReadDataAsync<JsonElement>()).GetProperty("id").GetString()!;
 
         var approved = await CreatePayment(user, 250m, "TRY");
         await PostPayment(user, PaymentBody(250m, "TRY", providerId));
         var byNewProvider = await PostPayment(user, PaymentBody(75m, "USD", providerId), "e2e-" + Guid.NewGuid());
         byNewProvider.StatusCode.Should().Be(HttpStatusCode.Created);
-        var newProviderPayment = (await byNewProvider.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var newProviderPayment = (await byNewProvider.Content.ReadDataAsync<PaymentDto>(Json))!;
         var unsupported = await PostPayment(user, PaymentBody(75m, "EUR", providerId));
         unsupported.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -203,11 +203,11 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
         (await PostPayment(user, PaymentBody(10m, "USD", providerId))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         (await user2.GetAsync($"/api/payments/{approved.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var adminList = await admin.GetFromJsonAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
+        var adminList = await admin.GetDataAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
         adminList!.Items.Select(p => p.Id).Should().Contain([approved.Id, newProviderPayment.Id]);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var report = await admin.GetFromJsonAsync<JsonElement>(
+        var report = await admin.GetDataAsync<JsonElement>(
             $"/api/reports/daily-payments?from={today:yyyy-MM-dd}&to={today:yyyy-MM-dd}&providerId={providerId}");
         var rows = report.GetProperty("rows").EnumerateArray().ToList();
         rows.Should().ContainSingle(r => r.GetProperty("status").GetString() == "Completed" && r.GetProperty("currency").GetString() == "TRY")
@@ -233,7 +233,7 @@ public sealed class EndToEndTests(EndToEndFactory factory) : ApiTestBase(factory
         }
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var report = await admin.GetFromJsonAsync<JsonElement>(
+        var report = await admin.GetDataAsync<JsonElement>(
             $"/api/reports/daily-payments?from={today:yyyy-MM-dd}&to={today:yyyy-MM-dd}&providerId={PaymentApiFactory.FakePayId}");
 
         var expected = await Factory.WithDbAsync(db => db.Payments

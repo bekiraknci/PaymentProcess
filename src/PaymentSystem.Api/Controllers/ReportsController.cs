@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PaymentSystem.Api.Contracts;
 using PaymentSystem.Api.Security;
 using PaymentSystem.Application.Reports;
 
@@ -32,7 +33,7 @@ public sealed class ReportsController : ApiControllerBase
     /// <response code="403">The caller is not an administrator.</response>
     /// <response code="404">The provider filter refers to an unknown provider.</response>
     [HttpGet("daily-payments")]
-    [ProducesResponseType<DailyPaymentReportResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<DailyPaymentReportResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> DailyPayments(
@@ -43,6 +44,6 @@ public sealed class ReportsController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(new GetDailyPaymentReportQuery(from, to, providerId), cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 }

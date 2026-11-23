@@ -153,7 +153,7 @@ public sealed class SecurityTests(PaymentApiFactory factory) : ApiTestBase(facto
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var payment = (await response.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var payment = (await response.Content.ReadDataAsync<PaymentDto>(Json))!;
         payment.UserId.Should().NotBe(Guid.Parse(victimUserId));
         payment.Id.Should().NotBeEmpty();
         payment.AttemptCount.Should().BeLessThanOrEqualTo(1);

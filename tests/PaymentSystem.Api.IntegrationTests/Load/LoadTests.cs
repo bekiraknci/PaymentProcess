@@ -20,7 +20,7 @@ public sealed class LoadTests(PaymentApiFactory factory, ITestOutputHelper outpu
         var responses = await Task.WhenAll(Enumerable.Range(0, 50).Select(_ => PostPayment(client, PaymentBody(77.70m), key)));
 
         responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
-        var ids = await Task.WhenAll(responses.Select(async r => (await r.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id));
+        var ids = await Task.WhenAll(responses.Select(async r => (await r.Content.ReadDataAsync<PaymentDto>(Json))!.Id));
         ids.Distinct().Should().ContainSingle();
         responses.Count(r => !r.Headers.Contains("Idempotent-Replayed")).Should().Be(1);
 
@@ -54,7 +54,7 @@ public sealed class LoadTests(PaymentApiFactory factory, ITestOutputHelper outpu
 
         var submitElapsed = stopwatch.Elapsed;
         responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
-        var ids = (await Task.WhenAll(responses.Select(async r => (await r.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id))).ToHashSet();
+        var ids = (await Task.WhenAll(responses.Select(async r => (await r.Content.ReadDataAsync<PaymentDto>(Json))!.Id))).ToHashSet();
         ids.Should().HaveCount(total);
 
         var deadline = DateTime.UtcNow.AddSeconds(90);
