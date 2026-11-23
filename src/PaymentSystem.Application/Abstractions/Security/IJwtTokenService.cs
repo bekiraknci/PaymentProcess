@@ -6,5 +6,5 @@ public sealed record AccessToken(string Token, DateTimeOffset ExpiresAt);
 
 public interface IJwtTokenService
 {
-    AccessToken CreateToken(User user);
+    AccessToken CreateToken(User user, IReadOnlyCollection<string> permissions);
 }

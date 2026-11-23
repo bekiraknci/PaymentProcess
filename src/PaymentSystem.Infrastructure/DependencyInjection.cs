@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IPaymentProviderRepository, PaymentProviderRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPaymentQueries, PaymentQueries>();
         services.AddScoped<IReportingQueries, ReportingQueries>();
     }

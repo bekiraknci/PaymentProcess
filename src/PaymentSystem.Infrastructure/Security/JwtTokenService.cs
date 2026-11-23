@@ -15,7 +15,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, TimeProvider t
 
     private readonly JsonWebTokenHandler _handler = new();
 
-    public AccessToken CreateToken(User user)
+    public AccessToken CreateToken(User user, IReadOnlyCollection<string> permissions)
     {
         var jwt = options.Value;
         var now = timeProvider.GetUtcNow();
@@ -28,7 +28,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, TimeProvider t
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(RoleClaimType, user.Role.ToString())
         };
-        claims.AddRange(RolePermissions.For(user.Role).Select(p => new Claim(Permissions.ClaimType, p)));
+        claims.AddRange(permissions.Distinct().Select(p => new Claim(Permissions.ClaimType, p)));
 
         var descriptor = new SecurityTokenDescriptor
         {

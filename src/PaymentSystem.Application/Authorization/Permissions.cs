@@ -1,5 +1,3 @@
-using PaymentSystem.Domain.Users;
-
 namespace PaymentSystem.Application.Authorization;
 
 public static class Permissions
@@ -13,27 +11,4 @@ public static class Permissions
 
     public static IReadOnlyList<string> All { get; } =
         [PaymentsCreate, PaymentsView, PaymentsProcess, ProvidersManage];
-}
-
-public static class RolePermissions
-{
-    private static readonly IReadOnlyDictionary<Role, IReadOnlyList<string>> Map =
-        new Dictionary<Role, IReadOnlyList<string>>
-        {
-            [Role.Admin] =
-            [
-                Permissions.PaymentsCreate,
-                Permissions.PaymentsView,
-                Permissions.PaymentsProcess,
-                Permissions.ProvidersManage
-            ],
-            [Role.User] =
-            [
-                Permissions.PaymentsCreate,
-                Permissions.PaymentsView
-            ]
-        };
-
-    public static IReadOnlyList<string> For(Role role) =>
-        Map.TryGetValue(role, out var permissions) ? permissions : [];
 }

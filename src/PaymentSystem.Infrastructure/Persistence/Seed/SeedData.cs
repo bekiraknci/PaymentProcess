@@ -1,3 +1,4 @@
+using AppPermissions = PaymentSystem.Application.Authorization.Permissions;
 using PaymentSystem.Domain.Users;
 
 namespace PaymentSystem.Infrastructure.Persistence.Seed;
@@ -38,6 +39,24 @@ public static class SeedData
             CreatedAt = SeedTime,
             CreatedBy = (string?)SeedActor
         }
+    ];
+
+    internal static object[] Permissions() =>
+    [
+        new { Name = AppPermissions.PaymentsCreate, Description = "Submit payment requests." },
+        new { Name = AppPermissions.PaymentsView, Description = "View payments and their status history." },
+        new { Name = AppPermissions.PaymentsProcess, Description = "Manually retry failed payments." },
+        new { Name = AppPermissions.ProvidersManage, Description = "Create, update, activate and deactivate payment providers." }
+    ];
+
+    internal static object[] RolePermissions() =>
+    [
+        new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsCreate },
+        new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsView },
+        new { Role = Role.Admin, PermissionName = AppPermissions.PaymentsProcess },
+        new { Role = Role.Admin, PermissionName = AppPermissions.ProvidersManage },
+        new { Role = Role.User, PermissionName = AppPermissions.PaymentsCreate },
+        new { Role = Role.User, PermissionName = AppPermissions.PaymentsView }
     ];
 
     internal static object[] Users() =>
