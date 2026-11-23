@@ -18,7 +18,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         var response = await PostPayment(client, PaymentBody(125.50m, "usd"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var payment = (await response.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var payment = (await response.Content.ReadDataAsync<PaymentDto>(Json))!;
         response.Headers.Location!.AbsolutePath.Should().Be($"/api/payments/{payment.Id}");
         payment.Status.Should().BeOneOf("Pending", "Processing", "Completed");
         payment.Amount.Should().Be(125.50m);
@@ -110,7 +110,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         {
             code = $"U{Guid.NewGuid():N}"[..12], name = "UsdOnly", supportedCurrencies = new[] { "USD" }
         });
-        var providerId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var providerId = (await created.Content.ReadDataAsync<JsonElement>()).GetProperty("id").GetString()!;
 
         var response = await PostPayment(await AsUser(), PaymentBody(currency: "EUR", providerId: providerId));
 
@@ -131,8 +131,8 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         second.StatusCode.Should().Be(HttpStatusCode.Created);
         first.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
         second.Headers.GetValues("Idempotent-Replayed").Should().Equal("true");
-        var a = await first.Content.ReadFromJsonAsync<PaymentDto>(Json);
-        var b = await second.Content.ReadFromJsonAsync<PaymentDto>(Json);
+        var a = await first.Content.ReadDataAsync<PaymentDto>(Json);
+        var b = await second.Content.ReadDataAsync<PaymentDto>(Json);
         b!.Id.Should().Be(a!.Id);
 
         var count = await Factory.WithDbAsync(db => Task.FromResult(db.Payments.Count(p => p.IdempotencyKey == key)));
@@ -150,8 +150,8 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
 
         second.StatusCode.Should().Be(HttpStatusCode.Created);
         second.Headers.Contains("Idempotent-Replayed").Should().BeTrue();
-        (await second.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id
-            .Should().Be((await first.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id);
+        (await second.Content.ReadDataAsync<PaymentDto>(Json))!.Id
+            .Should().Be((await first.Content.ReadDataAsync<PaymentDto>(Json))!.Id);
     }
 
     [Fact]
@@ -177,8 +177,8 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
 
         b.StatusCode.Should().Be(HttpStatusCode.Created);
         b.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
-        (await b.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id
-            .Should().NotBe((await a.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id);
+        (await b.Content.ReadDataAsync<PaymentDto>(Json))!.Id
+            .Should().NotBe((await a.Content.ReadDataAsync<PaymentDto>(Json))!.Id);
     }
 
     [Theory]
@@ -208,7 +208,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
 
         (await other.GetAsync($"/api/payments/{mine.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await other.GetAsync($"/api/payments/{mine.Id}/history")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var list = await other.GetFromJsonAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
+        var list = await other.GetDataAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
         list!.Items.Should().NotContain(p => p.Id == mine.Id);
         list.Items.Should().OnlyContain(p => p.UserId != mine.UserId);
     }
@@ -220,7 +220,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         var admin = await AsAdmin();
 
         (await admin.GetAsync($"/api/payments/{mine.Id}")).StatusCode.Should().Be(HttpStatusCode.OK);
-        var list = await admin.GetFromJsonAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
+        var list = await admin.GetDataAsync<PagedDto<PaymentDto>>("/api/payments?pageSize=100", Json);
         list!.Items.Should().Contain(p => p.Id == mine.Id);
     }
 
@@ -248,8 +248,8 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
             await WaitForFinalStatus(client, p.Id);
         }
 
-        var page1 = await client.GetFromJsonAsync<PagedDto<PaymentDto>>("/api/payments?status=Completed&page=1&pageSize=2", Json);
-        var page2 = await client.GetFromJsonAsync<PagedDto<PaymentDto>>("/api/payments?status=Completed&page=2&pageSize=2", Json);
+        var page1 = await client.GetDataAsync<PagedDto<PaymentDto>>("/api/payments?status=Completed&page=1&pageSize=2", Json);
+        var page2 = await client.GetDataAsync<PagedDto<PaymentDto>>("/api/payments?status=Completed&page=2&pageSize=2", Json);
 
         page1!.Items.Should().HaveCount(2);
         page1.TotalCount.Should().BeGreaterThanOrEqualTo(5);
@@ -282,7 +282,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         var payment = await CreatePayment(client);
         await WaitForFinalStatus(client, payment.Id);
 
-        var history = (await client.GetFromJsonAsync<HistoryDto[]>($"/api/payments/{payment.Id}/history", Json))!;
+        var history = (await client.GetDataAsync<HistoryDto[]>($"/api/payments/{payment.Id}/history", Json))!;
 
         history.Select(h => h.ToStatus).Should().Equal("Pending", "Processing", "Completed");
         history[0].FromStatus.Should().BeNull();
@@ -307,7 +307,7 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         final.AttemptCount.Should().Be(2);
         Factory.Provider.CallsFor(payment.Id).Should().Be(2);
 
-        var history = await user.GetFromJsonAsync<HistoryDto[]>($"/api/payments/{payment.Id}/history", Json);
+        var history = await user.GetDataAsync<HistoryDto[]>($"/api/payments/{payment.Id}/history", Json);
         history!.Should().Contain(h => h.FromStatus == "Failed" && h.ToStatus == "Pending" && h.ChangedBy == AdminEmail);
     }
 
@@ -346,10 +346,10 @@ public sealed class PaymentTests(PaymentApiFactory factory) : ApiTestBase(factor
         {
             code = $"D{Guid.NewGuid():N}"[..12], name = "Temp", supportedCurrencies = new[] { "USD" }
         });
-        var providerId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        var providerId = (await created.Content.ReadDataAsync<JsonElement>()).GetProperty("id").GetString()!;
         var user = await AsUser();
         var response = await PostPayment(user, PaymentBody(StubPaymentProviderClient.SlowAmount, providerId: providerId));
-        var payment = (await response.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var payment = (await response.Content.ReadDataAsync<PaymentDto>(Json))!;
 
         await admin.PatchAsync($"/api/providers/{providerId}/deactivate", null);
 

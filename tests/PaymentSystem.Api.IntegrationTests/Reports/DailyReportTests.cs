@@ -24,7 +24,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
             supportedCurrencies = new[] { "USD", "EUR", "TRY" }
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        return (await response.Content.ReadDataAsync<JsonElement>()).GetProperty("id").GetString()!;
     }
 
     private async Task SeedAsync(string providerId, decimal amount, string currency, string createdAt)
@@ -32,7 +32,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
         var client = await AsUser();
         var response = await PostPayment(client, PaymentBody(amount, currency, providerId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var payment = (await response.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        var payment = (await response.Content.ReadDataAsync<PaymentDto>(Json))!;
         await WaitForFinalStatus(client, payment.Id);
         await Factory.ExecuteSqlAsync($"UPDATE dbo.Payments SET CreatedAt = '{createdAt}' WHERE Id = '{payment.Id}'");
     }
@@ -49,7 +49,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
         await SeedAsync(providerId, 1.00m, "USD", "2026-10-03T00:00:00+00:00");
         await SeedAsync(providerId, 2.00m, "TRY", "2026-09-30T23:59:59+00:00");
 
-        var report = await (await AsAdmin()).GetFromJsonAsync<Report>(
+        var report = await (await AsAdmin()).GetDataAsync<Report>(
             $"/api/reports/daily-payments?from=2026-10-01&to=2026-10-02&providerId={providerId}", Json);
 
         report!.Rows.Select(r => (r.Date.ToString("yyyy-MM-dd"), r.Status, r.Currency, r.PaymentCount, r.TotalAmount)).Should().Equal(
@@ -75,7 +75,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
         await SeedAsync(first, 5m, "USD", "2026-08-15T10:00:00+00:00");
         await SeedAsync(second, 6m, "USD", "2026-08-15T11:00:00+00:00");
 
-        var report = await (await AsAdmin()).GetFromJsonAsync<Report>("/api/reports/daily-payments?from=2026-08-15&to=2026-08-15", Json);
+        var report = await (await AsAdmin()).GetDataAsync<Report>("/api/reports/daily-payments?from=2026-08-15&to=2026-08-15", Json);
 
         report!.Rows.Select(r => r.ProviderName).Should().Contain(["Alpha Pay", "Beta Pay"]);
         report.Rows.Should().BeInAscendingOrder(r => r.ProviderName);
@@ -85,7 +85,7 @@ public sealed class DailyReportTests(PaymentApiFactory factory) : ApiTestBase(fa
     [Fact]
     public async Task Empty_range_returns_empty_report()
     {
-        var report = await (await AsAdmin()).GetFromJsonAsync<Report>("/api/reports/daily-payments?from=2001-01-01&to=2001-01-31", Json);
+        var report = await (await AsAdmin()).GetDataAsync<Report>("/api/reports/daily-payments?from=2001-01-01&to=2001-01-31", Json);
 
         report!.Rows.Should().BeEmpty();
         report.TotalsByCurrency.Should().BeEmpty();

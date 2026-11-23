@@ -19,7 +19,7 @@ public sealed class AuthTests(PaymentApiFactory factory) : ApiTestBase(factory)
         var response = await Anonymous().PostAsJsonAsync("/api/auth/login", new { email, password });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = await response.Content.ReadDataAsync<JsonElement>();
         body.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
         body.GetProperty("tokenType").GetString().Should().Be("Bearer");
         body.GetProperty("role").GetString().Should().Be(role);
@@ -65,7 +65,7 @@ public sealed class AuthTests(PaymentApiFactory factory) : ApiTestBase(factory)
     {
         var client = await AsUser();
 
-        var body = await client.GetFromJsonAsync<JsonElement>("/api/auth/me");
+        var body = await client.GetDataAsync<JsonElement>("/api/auth/me");
 
         body.GetProperty("email").GetString().Should().Be(UserEmail);
         body.GetProperty("isAdmin").GetBoolean().Should().BeFalse();

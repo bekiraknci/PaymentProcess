@@ -162,7 +162,7 @@ public sealed class DatabaseTests(PaymentApiFactory factory) : ApiTestBase(facto
         var keyA = "db-key-" + Guid.NewGuid();
         await PostPayment(client, PaymentBody(10m), keyA);
         var second = await PostPayment(client, PaymentBody(11m), "db-key-" + Guid.NewGuid());
-        var secondId = (await second.Content.ReadFromJsonAsync<PaymentDto>(Json))!.Id;
+        var secondId = (await second.Content.ReadDataAsync<PaymentDto>(Json))!.Id;
         await CreatePayment(client);
         await CreatePayment(client);
 

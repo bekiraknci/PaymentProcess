@@ -48,6 +48,8 @@ public sealed class SwaggerTests(PaymentApiFactory factory) : ApiTestBase(factor
             .Should().Contain(p => p.GetProperty("name").GetString() == "Idempotency-Key" && p.GetProperty("in").GetString() == "header");
         create.GetProperty("responses").EnumerateObject().Select(r => r.Name)
             .Should().Contain(["201", "400", "401", "403", "404", "409", "429"]);
+        create.GetProperty("responses").GetProperty("201").GetProperty("content").GetProperty("application/json")
+            .GetProperty("schema").GetProperty("$ref").GetString().Should().Contain("ApiResponse");
 
         var schemas = doc.GetProperty("components").GetProperty("schemas");
         schemas.GetProperty("CreatePaymentRequest").GetProperty("properties").GetProperty("amount")

@@ -16,7 +16,7 @@ public sealed class ProviderTests(PaymentApiFactory factory) : ApiTestBase(facto
     {
         var client = await AsAdmin();
 
-        var providers = await client.GetFromJsonAsync<JsonElement[]>("/api/providers");
+        var providers = await client.GetDataAsync<JsonElement[]>("/api/providers");
 
         providers!.Select(p => p.GetProperty("code").GetString()).Should().Contain(["FAKEPAY", "LEGACYPAY"]);
         var fakePay = providers!.Single(p => p.GetProperty("code").GetString() == "FAKEPAY");
@@ -41,7 +41,7 @@ public sealed class ProviderTests(PaymentApiFactory factory) : ApiTestBase(facto
         });
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         created.Headers.Location.Should().NotBeNull();
-        var provider = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var provider = await created.Content.ReadDataAsync<JsonElement>();
         var id = provider.GetProperty("id").GetGuid();
         provider.GetProperty("code").GetString().Should().Be(code.ToUpperInvariant());
         provider.GetProperty("name").GetString().Should().Be("Acme Pay");
@@ -57,13 +57,13 @@ public sealed class ProviderTests(PaymentApiFactory factory) : ApiTestBase(facto
             supportedCurrencies = new[] { "TRY" }
         });
         updated.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await updated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("name").GetString().Should().Be("Acme Pay 2");
+        (await updated.Content.ReadDataAsync<JsonElement>()).GetProperty("name").GetString().Should().Be("Acme Pay 2");
 
         (await client.PatchAsync($"/api/providers/{id}/deactivate", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await client.GetFromJsonAsync<JsonElement>($"/api/providers/{id}")).GetProperty("isActive").GetBoolean().Should().BeFalse();
+        (await client.GetDataAsync<JsonElement>($"/api/providers/{id}")).GetProperty("isActive").GetBoolean().Should().BeFalse();
 
         (await client.PatchAsync($"/api/providers/{id}/activate", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await client.GetFromJsonAsync<JsonElement>($"/api/providers/{id}")).GetProperty("isActive").GetBoolean().Should().BeTrue();
+        (await client.GetDataAsync<JsonElement>($"/api/providers/{id}")).GetProperty("isActive").GetBoolean().Should().BeTrue();
     }
 
     [Fact]

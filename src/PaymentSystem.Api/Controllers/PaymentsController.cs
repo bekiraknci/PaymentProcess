@@ -47,7 +47,7 @@ public sealed class PaymentsController : ApiControllerBase
     [EnableRateLimiting(RateLimitPolicies.PaymentCreate)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [Consumes("application/json")]
-    [ProducesResponseType<PaymentResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiResponse<PaymentResponse>>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -71,7 +71,7 @@ public sealed class PaymentsController : ApiControllerBase
             Response.Headers[IdempotentReplayedHeader] = "true";
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = result.Value.Payment.Id }, result.Value.Payment);
+        return SuccessCreated(nameof(GetById), new { id = result.Value.Payment.Id }, result.Value.Payment);
     }
 
     /// <summary>
@@ -87,14 +87,14 @@ public sealed class PaymentsController : ApiControllerBase
     /// <response code="404">The payment does not exist or belongs to another user.</response>
     [HttpGet("{id:guid}")]
     [HasPermission(Permissions.PaymentsView)]
-    [ProducesResponseType<PaymentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<PaymentResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> GetById(Guid id, [FromServices] GetPaymentByIdHandler handler, CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>
@@ -112,7 +112,7 @@ public sealed class PaymentsController : ApiControllerBase
     /// <response code="403">The caller lacks the `Payments.View` permission.</response>
     [HttpGet]
     [HasPermission(Permissions.PaymentsView)]
-    [ProducesResponseType<PagedResult<PaymentResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<PagedResult<PaymentResponse>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -124,7 +124,7 @@ public sealed class PaymentsController : ApiControllerBase
         [FromQuery] int pageSize = 20)
     {
         var result = await handler.HandleAsync(new ListPaymentsQuery(status, page, pageSize), cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>
@@ -139,14 +139,14 @@ public sealed class PaymentsController : ApiControllerBase
     /// <response code="404">The payment does not exist or belongs to another user.</response>
     [HttpGet("{id:guid}/history")]
     [HasPermission(Permissions.PaymentsView)]
-    [ProducesResponseType<IReadOnlyList<PaymentHistoryResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<PaymentHistoryResponse>>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> GetHistory(Guid id, [FromServices] GetPaymentHistoryHandler handler, CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public sealed class PaymentsController : ApiControllerBase
     /// <response code="409">The payment is not in the `Failed` status.</response>
     [HttpPost("{id:guid}/retry")]
     [HasPermission(Permissions.PaymentsProcess)]
-    [ProducesResponseType<PaymentResponse>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ApiResponse<PaymentResponse>>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
@@ -175,7 +175,7 @@ public sealed class PaymentsController : ApiControllerBase
     {
         var result = await handler.HandleAsync(id, cancellationToken);
         return result.IsSuccess
-            ? AcceptedAtAction(nameof(GetById), new { id }, result.Value)
+            ? SuccessAccepted(nameof(GetById), new { id }, result.Value)
             : Problem(result.Error);
     }
 }

@@ -28,7 +28,7 @@ public sealed class AuthController : ApiControllerBase
     [EnableRateLimiting(RateLimitPolicies.Login)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
     [Consumes("application/json")]
-    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<LoginResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     public async Task<IActionResult> Login(
@@ -37,7 +37,7 @@ public sealed class AuthController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(new LoginCommand(request.Email, request.Password), cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        return result.IsSuccess ? Success(result.Value) : Problem(result.Error);
     }
 
     /// <summary>
@@ -47,10 +47,10 @@ public sealed class AuthController : ApiControllerBase
     /// <response code="401">The request has no valid access token.</response>
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType<CurrentUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse<CurrentUserResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
     public IActionResult Me([FromServices] ICurrentUser currentUser) =>
-        Ok(new CurrentUserResponse(
+        Success(new CurrentUserResponse(
             currentUser.Id,
             currentUser.Email,
             currentUser.IsAdmin,

@@ -42,7 +42,7 @@ public abstract class ApiTestBase(PaymentApiFactory factory)
     {
         var response = await Anonymous().PostAsJsonAsync("/api/auth/login", new { email, password });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = await response.Content.ReadDataAsync<JsonElement>();
         return body.GetProperty("accessToken").GetString()!;
     }
 
@@ -64,7 +64,7 @@ public abstract class ApiTestBase(PaymentApiFactory factory)
     {
         var response = await PostPayment(client, PaymentBody(amount, currency));
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
-        return (await response.Content.ReadFromJsonAsync<PaymentDto>(Json))!;
+        return (await response.Content.ReadDataAsync<PaymentDto>(Json))!;
     }
 
     protected static async Task<PaymentDto> WaitForFinalStatus(HttpClient client, Guid id, int timeoutSeconds = 20)
@@ -74,7 +74,7 @@ public abstract class ApiTestBase(PaymentApiFactory factory)
         do
         {
             await Task.Delay(200);
-            payment = await client.GetFromJsonAsync<PaymentDto>($"/api/payments/{id}", Json);
+            payment = await client.GetDataAsync<PaymentDto>($"/api/payments/{id}", Json);
         }
         while (payment!.Status is "Pending" or "Processing" && DateTime.UtcNow < deadline);
 

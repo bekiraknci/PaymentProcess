@@ -135,6 +135,7 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | **The payment id is the provider's `Idempotency-Key`.** | Retries after timeouts or crashes cannot charge twice; the provider replays the original approval. |
 | **API idempotency.** The `Idempotency-Key` header is scoped per user, with a SHA-256 hash of the request body. | The same key and body replay the payment (`201`, `Idempotent-Replayed: true`); a different body returns `409`. Concurrent duplicates are resolved by a filtered unique index. |
 | **Role permissions are stored in the database.** `Permissions` and `RolePermissions` tables, seeded by a migration. Login reads the caller's role permissions and writes one `permission` claim per grant into the JWT. | An administrator can grant or revoke a permission with a data change, without a deploy. The change applies at the caller's next login, because tokens are self-contained. Permission names stay as constants in code, because each one is an authorization policy; a test asserts that the seeded rows match those policies. |
+| **One envelope for successful responses.** `ApiControllerBase` wraps every success payload as `{ statusCode, isSuccess, data }`; errors stay ProblemDetails. | Clients read every success the same way. Errors keep the standard `application/problem+json` format that the assessment asks for, instead of a custom error shape. |
 | **Another user's payment returns 404, not 403.** | Ownership is filtered in the query, so the API never confirms that a record exists. |
 | **Manual retry is not capped.** | An admin override can retry a payment that exhausted the 3 automatic attempts. Automatic retries stop at `MaxAutomaticAttempts`. |
 | **`TimeProvider` is injected everywhere.** | Time-dependent logic (leases, backoff, audit stamps, JWT expiry) is deterministic in tests. |
@@ -157,7 +158,13 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | PATCH | `/api/providers/{id}/activate`, `/deactivate` | `Providers.Manage` | 204 | 401, 403, 404 |
 | GET | `/api/reports/daily-payments?from=&to=&providerId=` | Admin (`AdminOnly` policy) | 200 | 400, 401, 403, 404 |
 
-Every error is `application/problem+json` with a `traceId`. Validation errors are `ValidationProblemDetails` with one entry per field, and most errors carry a machine-readable `code` (e.g. `payment.idempotency_key_reused`).
+Every successful response uses the same envelope; the endpoint's payload is in `data`:
+
+```json
+{ "statusCode": 201, "isSuccess": true, "data": { "id": "...", "status": "Pending" } }
+```
+
+`204 No Content` responses (provider activate/deactivate) have no body. Every error is `application/problem+json` with a `traceId`. Validation errors are `ValidationProblemDetails` with one entry per field, and most errors carry a machine-readable `code` (e.g. `payment.idempotency_key_reused`).
 
 **Deterministic provider outcomes** (fake provider):
 
@@ -248,7 +255,7 @@ dotnet test
 |---|---|---|
 | `PaymentSystem.Domain.Tests` | 37 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules; permission and role grant rules |
 | `PaymentSystem.Application.Tests` | 29 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op, lost claim, unexpected provider errors and results that arrive after a lost lease; backoff; retry job selection; manual retry |
-| `PaymentSystem.Api.IntegrationTests` | 155 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
+| `PaymentSystem.Api.IntegrationTests` | 159 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
 
 The integration tests cover:
 - **Functional:** every endpoint and status code, the Swagger contract, and permission grants or revocations in the database taking effect at the next login.

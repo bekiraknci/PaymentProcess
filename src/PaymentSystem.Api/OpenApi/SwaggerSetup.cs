@@ -27,6 +27,10 @@ internal static class SwaggerSetup
                     To switch users, log in again; to test 401, use **Authorize → Logout**.
                     When pasting a token manually, the `Bearer ` prefix is optional.
 
+                    **Response format**
+                    - Success: `{ "statusCode": 200, "isSuccess": true, "data": { ... } }`; `204` responses have no body.
+                    - Error: `application/problem+json` (ProblemDetails with `code` and `traceId`).
+
                     **Deterministic provider outcomes** (start `FakePaymentProvider.Api` on http://localhost:5100)
                     - amount `666` → always declined
                     - amount `503` → provider outage (503)
@@ -75,7 +79,7 @@ internal static class SwaggerSetup
                 (res) => {
                     if (res.ok && res.url.endsWith('/api/auth/login')) {
                         try {
-                            const token = JSON.parse(res.text).accessToken;
+                            const token = JSON.parse(res.text).data?.accessToken;
                             if (token) { window.ui.preauthorizeApiKey('Bearer', token); }
                         } catch { }
                     }

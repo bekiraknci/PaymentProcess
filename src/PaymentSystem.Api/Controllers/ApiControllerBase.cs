@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using PaymentSystem.Api.Contracts;
 using PaymentSystem.Application.Common.Results;
 
 namespace PaymentSystem.Api.Controllers;
@@ -7,6 +8,17 @@ namespace PaymentSystem.Api.Controllers;
 [ApiController]
 public abstract class ApiControllerBase : ControllerBase
 {
+    protected static OkObjectResult Success<T>(T data) =>
+        new(Wrap(StatusCodes.Status200OK, data));
+
+    protected CreatedAtActionResult SuccessCreated<T>(string actionName, object routeValues, T data) =>
+        CreatedAtAction(actionName, routeValues, Wrap(StatusCodes.Status201Created, data));
+
+    protected AcceptedAtActionResult SuccessAccepted<T>(string actionName, object routeValues, T data) =>
+        AcceptedAtAction(actionName, routeValues, Wrap(StatusCodes.Status202Accepted, data));
+
+    private static ApiResponse<T> Wrap<T>(int statusCode, T data) => new(statusCode, true, data);
+
     protected ObjectResult Problem(Error error)
     {
         if (error is { Type: ErrorType.Validation, ValidationErrors: { } errors })

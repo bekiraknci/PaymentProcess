@@ -85,7 +85,7 @@ public sealed class RestartRecoveryTests(ITestOutputHelper output)
     {
         var client = factory.CreateClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email = "user@test.com", password = "User123!" });
-        var token = (await login.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("accessToken").GetString();
+        var token = (await login.Content.ReadDataAsync<System.Text.Json.JsonElement>()).GetProperty("accessToken").GetString();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
     }
@@ -94,7 +94,7 @@ public sealed class RestartRecoveryTests(ITestOutputHelper output)
     {
         var response = await client.PostAsJsonAsync("/api/payments", new { providerId = PaymentApiFactory.FakePayId, amount, currency = "USD" });
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        return (await response.Content.ReadDataAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
     }
 
     private static async Task WaitForStatusAsync(PaymentApiFactory factory, Guid id, string status, int timeoutSeconds = 40)
