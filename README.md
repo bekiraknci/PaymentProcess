@@ -20,6 +20,7 @@ Users submit payments and get `201 Pending` immediately. A background worker sen
 **Prerequisites**
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - SQL Server **LocalDB** (installed with Visual Studio's *ASP.NET and web development* workload) or any SQL Server
+- `sqlcmd` (installed with Visual Studio or the SQL Server command line tools)
 - Optional: Visual Studio 2026 for IIS Express debugging
 
 ```powershell
@@ -27,6 +28,14 @@ git clone https://github.com/bekiraknci/PaymentProcess.git
 cd PaymentProcess
 dotnet tool restore
 ```
+
+Create the local SQL login once (the Development connection string uses `user` / `PaymentApi!2026`):
+
+```powershell
+sqlcmd -S "(localdb)\MSSQLLocalDB" -E -i sql/sqlserver/create_dev_login.sql
+```
+
+Without this step the API cannot connect, and the database is not created.
 
 **Visual Studio**
 1. Open `PaymentSystem.slnx`.
