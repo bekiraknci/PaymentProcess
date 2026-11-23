@@ -196,7 +196,13 @@ SQL Server, Code First with migrations (`src/PaymentSystem.Infrastructure/Persis
 | `IncludeCurrencyInReportIndex` | Makes the report index fully covering |
 | `AddRolePermissions` | `Permissions` and `RolePermissions` tables with seed grants; FK to `Permissions` and a check constraint on `Role` |
 
-The default connection string targets LocalDB with Windows authentication. To use another server or SQL authentication, override it with user secrets or the `ConnectionStrings__PaymentSystem` environment variable; never put credentials in `appsettings.json`.
+In Development the API connects to LocalDB with the SQL login `user` / `PaymentApi!2026` (`appsettings.Development.json`). Create the login once with Windows authentication:
+
+```powershell
+sqlcmd -S "(localdb)\MSSQLLocalDB" -E -i sql/sqlserver/create_dev_login.sql
+```
+
+The script creates or resets the login, lets it create the database on first start, and makes it `db_owner` if the database already exists. The base `appsettings.json` still targets LocalDB with Windows authentication. To use another server, override the connection string with user secrets or the `ConnectionStrings__PaymentSystem` environment variable; never put production credentials in configuration files.
 
 ```powershell
 dotnet user-secrets set "ConnectionStrings:PaymentSystem" "Server=.;Database=PaymentSystem;User Id=<user>;Password=<password>;TrustServerCertificate=True" --project src/PaymentSystem.Api
@@ -260,7 +266,7 @@ Integration tests create a throw-away database `PaymentSystem_IT_<guid>` and dro
 
 | Key | Default | Description |
 |---|---|---|
-| `ConnectionStrings:PaymentSystem` | LocalDB | SQL Server connection string |
+| `ConnectionStrings:PaymentSystem` | LocalDB (SQL login `user` in Development) | SQL Server connection string |
 | `Jwt:Issuer`, `Jwt:Audience` | `PaymentSystem`, `PaymentSystem.Api` | Token issuer and audience |
 | `Jwt:SigningKey` | (dev key in `appsettings.Development.json`) | HMAC key of at least 32 characters; supply a secret in other environments |
 | `Jwt:AccessTokenLifetimeMinutes` | 60 | Token lifetime |
@@ -297,4 +303,4 @@ Integration tests create a throw-away database `PaymentSystem_IT_<guid>` and dro
 - **Rate limiting is per instance.** Behind a load balancer it needs a shared store and correct `X-Forwarded-For` handling (`ForwardedHeaders`).
 - **Offset pagination.** It is fine for moderate data sizes; very deep pages would need keyset pagination.
 - **Providers are read from the database on every submission.** A short-lived cache would help at very high volume.
-- **The dev JWT key and LocalDB connection string are committed.** They are for local development only.
+- **The dev JWT key and the dev SQL login password are committed.** They are for local development only.
