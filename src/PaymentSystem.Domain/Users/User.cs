@@ -23,8 +23,6 @@ public sealed class User : AggregateRoot
     public string PasswordHash { get; private set; }
     public Role Role { get; private set; }
 
-    public bool IsAdmin => Role == Role.Admin;
-
     public static User Create(string email, string passwordHash, Role role, DateTimeOffset now)
     {
         if (string.IsNullOrWhiteSpace(passwordHash))

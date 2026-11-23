@@ -59,7 +59,7 @@ dotnet ef database update -p src/PaymentSystem.Infrastructure -s src/PaymentSyst
 
 | Email | Password | Role | Permissions |
 |---|---|---|---|
-| `admin@test.com` | `Admin123!` | Admin | `Payments.Create`, `Payments.View`, `Payments.Process`, `Providers.Manage` |
+| `admin@test.com` | `Admin123!` | Admin | `Payments.Create`, `Payments.View`, `Payments.ViewAll`, `Payments.Process`, `Providers.Manage`, `Reports.View` |
 | `user@test.com` | `User123!` | User | `Payments.Create`, `Payments.View` |
 | `user2@test.com` | `User123!` | User | `Payments.Create`, `Payments.View` |
 
@@ -134,7 +134,7 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | **Idempotent processing via an optimistic claim.** The worker calls `StartProcessing` and saves under the `RowVersion` concurrency token. | Of two workers that grab the same payment, exactly one wins and the other is a no-op. Unlike a raw `ExecuteUpdate`, the claim keeps history and domain events. `Completed` payments are never sent to the provider again. |
 | **The payment id is the provider's `Idempotency-Key`.** | Retries after timeouts or crashes cannot charge twice; the provider replays the original approval. |
 | **API idempotency.** The `Idempotency-Key` header is scoped per user, with a SHA-256 hash of the request body. | The same key and body replay the payment (`201`, `Idempotent-Replayed: true`); a different body returns `409`. Concurrent duplicates are resolved by a filtered unique index. |
-| **Role permissions are stored in the database.** `Permissions` and `RolePermissions` tables, seeded by a migration. Login reads the caller's role permissions and writes one `permission` claim per grant into the JWT. | An administrator can grant or revoke a permission with a data change, without a deploy. The change applies at the caller's next login, because tokens are self-contained. Permission names stay as constants in code, because each one is an authorization policy; a test asserts that the seeded rows match those policies. |
+| **Role permissions are stored in the database.** `Permissions` and `RolePermissions` tables, seeded by a migration. Login reads the caller's role permissions and writes one `permission` claim per grant into the JWT. | An administrator can grant or revoke a permission with a data change, without a deploy. The change applies at the caller's next login, because tokens are self-contained. Every authorization rule is a permission, including seeing every user's payments (`Payments.ViewAll`) and reading the report (`Reports.View`); no endpoint checks the role. Policies are built on demand from the permission name, and `/api/auth/me` returns the permissions in the token, so a permission added in the database shows up without a code change. An endpoint still has to name the permission it requires. |
 | **One envelope for successful responses.** `ApiControllerBase` wraps every success payload as `{ statusCode, isSuccess, data }`; errors stay ProblemDetails. | Clients read every success the same way. Errors keep the standard `application/problem+json` format that the assessment asks for, instead of a custom error shape. |
 | **Another user's payment returns 404, not 403.** | Ownership is filtered in the query, so the API never confirms that a record exists. |
 | **Manual retry is not capped.** | An admin override can retry a payment that exhausted the 3 automatic attempts. Automatic retries stop at `MaxAutomaticAttempts`. |
@@ -156,7 +156,7 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | GET / POST | `/api/providers` | `Providers.Manage` | 200 / 201 | 400, 401, 403, 409 |
 | GET / PUT | `/api/providers/{id}` | `Providers.Manage` | 200 | 400, 401, 403, 404 |
 | PATCH | `/api/providers/{id}/activate`, `/deactivate` | `Providers.Manage` | 204 | 401, 403, 404 |
-| GET | `/api/reports/daily-payments?from=&to=&providerId=` | Admin (`AdminOnly` policy) | 200 | 400, 401, 403, 404 |
+| GET | `/api/reports/daily-payments?from=&to=&providerId=` | `Reports.View` | 200 | 400, 401, 403, 404 |
 
 Every successful response uses the same envelope; the endpoint's payload is in `data`:
 
@@ -202,6 +202,7 @@ SQL Server, Code First with migrations (`src/PaymentSystem.Infrastructure/Persis
 | `AddDailyPaymentReportProcedure` | `dbo.sp_GetDailyPaymentReport`; `Down` drops it |
 | `IncludeCurrencyInReportIndex` | Makes the report index fully covering |
 | `AddRolePermissions` | `Permissions` and `RolePermissions` tables with seed grants; FK to `Permissions` and a check constraint on `Role` |
+| `AddViewAllAndReportPermissions` | `Payments.ViewAll` and `Reports.View`, granted to Admin; they replace the former role checks |
 
 In Development the API connects to LocalDB with the SQL login `user` / `PaymentApi!2026` (`appsettings.Development.json`). Create the login once with Windows authentication:
 
@@ -255,14 +256,14 @@ dotnet test
 |---|---|---|
 | `PaymentSystem.Domain.Tests` | 37 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules; permission and role grant rules |
 | `PaymentSystem.Application.Tests` | 29 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op, lost claim, unexpected provider errors and results that arrive after a lost lease; backoff; retry job selection; manual retry |
-| `PaymentSystem.Api.IntegrationTests` | 159 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
+| `PaymentSystem.Api.IntegrationTests` | 162 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
 
 The integration tests cover:
 - **Functional:** every endpoint and status code, the Swagger contract, and permission grants or revocations in the database taking effect at the next login.
 - **Security:** forged, expired and tampered tokens; wrong issuer or audience; `alg: none`; IDOR; mass assignment; injection payloads; error leakage; security headers; rate limits.
 - **Database:** migrations and model in sync; column types; index shapes; check constraints; FK restrict; seeded permissions matching the registered policies; rowversion concurrency; execution plans.
 - **Provider client:** response mapping, malformed or empty provider bodies, retry behaviour, and startup validation of timeout and lease settings.
-- **Reports:** exact aggregates, UTC day boundaries, validation, admin-only access.
+- **Reports:** exact aggregates, UTC day boundaries, validation, access by the `Reports.View` permission.
 - **Load:** 50 identical requests with one key create exactly one payment; 600 concurrent submissions are processed exactly once; concurrent retries.
 - **End-to-end:** the API calls the real FakePaymentProvider over HTTP on Kestrel. Covered: approval, decline with automatic retries up to the cap, outage, timeout, recovery by the retry job, manual retry past the cap, a full multi-role scenario, and report-vs-database reconciliation.
 - **Restart recovery:** one API instance is stopped with payments `Pending` and `Processing`, and a second instance on the same database finishes them.

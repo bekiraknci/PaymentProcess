@@ -280,6 +280,11 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Name = "Payments.ViewAll",
+                            Description = "View payments of every user, not only your own."
+                        },
+                        new
+                        {
                             Name = "Payments.Process",
                             Description = "Manually retry failed payments."
                         },
@@ -287,6 +292,11 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         {
                             Name = "Providers.Manage",
                             Description = "Create, update, activate and deactivate payment providers."
+                        },
+                        new
+                        {
+                            Name = "Reports.View",
+                            Description = "Read the daily payment report."
                         });
                 });
 
@@ -331,6 +341,16 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         {
                             Role = "Admin",
                             PermissionName = "Providers.Manage"
+                        },
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Payments.ViewAll"
+                        },
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Reports.View"
                         },
                         new
                         {

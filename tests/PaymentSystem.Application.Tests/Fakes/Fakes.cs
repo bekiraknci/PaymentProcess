@@ -15,13 +15,14 @@ internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     public override DateTimeOffset GetUtcNow() => Now;
 }
 
-internal sealed class FakeCurrentUser(Guid id, bool isAdmin = false) : ICurrentUser
+internal sealed class FakeCurrentUser(Guid id, bool canViewAllPayments = false) : ICurrentUser
 {
     public bool IsAuthenticated => true;
     public Guid Id { get; } = id;
     public string? Email => $"{Id:N}@test.com";
-    public bool IsAdmin { get; } = isAdmin;
-    public bool HasPermission(string permission) => true;
+    public string? Role => canViewAllPayments ? "Admin" : "User";
+    public IReadOnlyList<string> Permissions => Authorization.Permissions.All.Where(HasPermission).ToList();
+    public bool HasPermission(string permission) => canViewAllPayments || permission != Authorization.Permissions.PaymentsViewAll;
 }
 
 internal sealed class FakeUnitOfWork : IUnitOfWork

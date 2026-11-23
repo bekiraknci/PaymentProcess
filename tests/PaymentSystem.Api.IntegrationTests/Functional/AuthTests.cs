@@ -11,7 +11,7 @@ namespace PaymentSystem.Api.IntegrationTests.Functional;
 public sealed class AuthTests(PaymentApiFactory factory) : ApiTestBase(factory)
 {
     [Theory]
-    [InlineData(AdminEmail, AdminPassword, "Admin", 4)]
+    [InlineData(AdminEmail, AdminPassword, "Admin", 6)]
     [InlineData(UserEmail, UserPassword, "User", 2)]
     [InlineData("  USER@Test.com ", UserPassword, "User", 2)]
     public async Task Login_with_valid_credentials_returns_token_and_permissions(string email, string password, string role, int permissionCount)
@@ -68,7 +68,7 @@ public sealed class AuthTests(PaymentApiFactory factory) : ApiTestBase(factory)
         var body = await client.GetDataAsync<JsonElement>("/api/auth/me");
 
         body.GetProperty("email").GetString().Should().Be(UserEmail);
-        body.GetProperty("isAdmin").GetBoolean().Should().BeFalse();
+        body.GetProperty("role").GetString().Should().Be("User");
         body.GetProperty("permissions").EnumerateArray().Select(p => p.GetString())
             .Should().BeEquivalentTo("Payments.Create", "Payments.View");
     }

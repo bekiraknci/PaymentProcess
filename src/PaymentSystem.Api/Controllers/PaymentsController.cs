@@ -77,7 +77,7 @@ public sealed class PaymentsController : ApiControllerBase
     /// <summary>
     /// Returns a single payment.
     /// </summary>
-    /// <remarks>Users see only their own payments; administrators see all payments.</remarks>
+    /// <remarks>Callers see only their own payments unless they have the `Payments.ViewAll` permission (Admin).</remarks>
     /// <param name="id">Payment identifier.</param>
     /// <param name="handler">Get payment use case.</param>
     /// <param name="cancellationToken">Request cancellation token.</param>
@@ -100,7 +100,7 @@ public sealed class PaymentsController : ApiControllerBase
     /// <summary>
     /// Lists payments, newest first, with optional status filter and paging.
     /// </summary>
-    /// <remarks>Users see only their own payments; administrators see all payments.</remarks>
+    /// <remarks>Callers see only their own payments unless they have the `Payments.ViewAll` permission (Admin).</remarks>
     /// <param name="status">Optional status filter: `Pending`, `Processing`, `Completed` or `Failed`.</param>
     /// <param name="page">Page number, starting at 1.</param>
     /// <param name="pageSize">Items per page (1-100).</param>

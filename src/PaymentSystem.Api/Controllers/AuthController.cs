@@ -53,8 +53,8 @@ public sealed class AuthController : ApiControllerBase
         Success(new CurrentUserResponse(
             currentUser.Id,
             currentUser.Email,
-            currentUser.IsAdmin,
-            Permissions.All.Where(currentUser.HasPermission).ToList()));
+            currentUser.Role,
+            currentUser.Permissions));
 }
 
-public sealed record CurrentUserResponse(Guid Id, string? Email, bool IsAdmin, IReadOnlyList<string> Permissions);
+public sealed record CurrentUserResponse(Guid Id, string? Email, string? Role, IReadOnlyList<string> Permissions);
