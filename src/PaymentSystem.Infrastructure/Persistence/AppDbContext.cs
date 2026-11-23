@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PaymentStatusHistory> PaymentStatusHistory => Set<PaymentStatusHistory>();
     public DbSet<PaymentProvider> PaymentProviders => Set<PaymentProvider>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

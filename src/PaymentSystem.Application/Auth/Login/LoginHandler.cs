@@ -1,7 +1,6 @@
 using FluentValidation;
 using PaymentSystem.Application.Abstractions.Persistence;
 using PaymentSystem.Application.Abstractions.Security;
-using PaymentSystem.Application.Authorization;
 using PaymentSystem.Application.Common.Results;
 using PaymentSystem.Application.Common.Validation;
 
@@ -11,6 +10,7 @@ public sealed class LoginHandler(
     IValidator<LoginCommand> validator,
     IUserRepository users,
     IPasswordHasher passwordHasher,
+    IPermissionRepository permissions,
     IJwtTokenService tokenService)
 {
     private static readonly Error InvalidCredentials =
@@ -40,7 +40,8 @@ public sealed class LoginHandler(
             return InvalidCredentials;
         }
 
-        var token = tokenService.CreateToken(user);
+        var granted = await permissions.GetForRoleAsync(user.Role, cancellationToken);
+        var token = tokenService.CreateToken(user, granted);
 
         return new LoginResponse(
             token.Token,
@@ -48,6 +49,6 @@ public sealed class LoginHandler(
             token.ExpiresAt,
             user.Email,
             user.Role.ToString(),
-            RolePermissions.For(user.Role));
+            granted);
     }
 }

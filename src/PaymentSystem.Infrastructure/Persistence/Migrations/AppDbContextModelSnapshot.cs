@@ -250,6 +250,100 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PaymentSystem.Domain.Users.Permission", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Name")
+                        .HasName("PK_Permissions");
+
+                    b.ToTable("Permissions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Name = "Payments.Create",
+                            Description = "Submit payment requests."
+                        },
+                        new
+                        {
+                            Name = "Payments.View",
+                            Description = "View payments and their status history."
+                        },
+                        new
+                        {
+                            Name = "Payments.Process",
+                            Description = "Manually retry failed payments."
+                        },
+                        new
+                        {
+                            Name = "Providers.Manage",
+                            Description = "Create, update, activate and deactivate payment providers."
+                        });
+                });
+
+            modelBuilder.Entity("PaymentSystem.Domain.Users.RolePermission", b =>
+                {
+                    b.Property<string>("Role")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PermissionName")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Role", "PermissionName")
+                        .HasName("PK_RolePermissions");
+
+                    b.HasIndex("PermissionName");
+
+                    b.ToTable("RolePermissions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RolePermissions_Role", "[Role] IN (N'Admin', N'User')");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Payments.Create"
+                        },
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Payments.View"
+                        },
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Payments.Process"
+                        },
+                        new
+                        {
+                            Role = "Admin",
+                            PermissionName = "Providers.Manage"
+                        },
+                        new
+                        {
+                            Role = "User",
+                            PermissionName = "Payments.Create"
+                        },
+                        new
+                        {
+                            Role = "User",
+                            PermissionName = "Payments.View"
+                        });
+                });
+
             modelBuilder.Entity("PaymentSystem.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -371,6 +465,15 @@ namespace PaymentSystem.Infrastructure.Persistence.Migrations
                         .WithMany("History")
                         .HasForeignKey("PaymentId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PaymentSystem.Domain.Users.RolePermission", b =>
+                {
+                    b.HasOne("PaymentSystem.Domain.Users.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionName")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

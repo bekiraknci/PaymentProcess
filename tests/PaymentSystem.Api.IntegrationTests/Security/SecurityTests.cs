@@ -244,7 +244,8 @@ public sealed class RateLimitingTests : IClassFixture<RateLimitedApiFactory>
     public async Task Payment_submission_is_throttled_per_user()
     {
         var user = await _factory.WithDbAsync(db => db.Users.AsNoTracking().SingleAsync(u => u.Email == "user2@test.com"));
-        var token = _factory.Services.GetRequiredService<IJwtTokenService>().CreateToken(user).Token;
+        var permissions = await _factory.WithDbAsync(db => db.RolePermissions.Where(rp => rp.Role == user.Role).Select(rp => rp.PermissionName).ToListAsync());
+        var token = _factory.Services.GetRequiredService<IJwtTokenService>().CreateToken(user, permissions).Token;
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
