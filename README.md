@@ -134,6 +134,7 @@ Every transition goes through a method on the `Payment` aggregate, which rejects
 | **Idempotent processing via an optimistic claim.** The worker calls `StartProcessing` and saves under the `RowVersion` concurrency token. | Of two workers that grab the same payment, exactly one wins and the other is a no-op. Unlike a raw `ExecuteUpdate`, the claim keeps history and domain events. `Completed` payments are never sent to the provider again. |
 | **The payment id is the provider's `Idempotency-Key`.** | Retries after timeouts or crashes cannot charge twice; the provider replays the original approval. |
 | **API idempotency.** The `Idempotency-Key` header is scoped per user, with a SHA-256 hash of the request body. | The same key and body replay the payment (`201`, `Idempotent-Replayed: true`); a different body returns `409`. Concurrent duplicates are resolved by a filtered unique index. |
+| **Role permissions are stored in the database.** `Permissions` and `RolePermissions` tables, seeded by a migration. Login reads the caller's role permissions and writes one `permission` claim per grant into the JWT. | An administrator can grant or revoke a permission with a data change, without a deploy. The change applies at the caller's next login, because tokens are self-contained. Permission names stay as constants in code, because each one is an authorization policy; a test asserts that the seeded rows match those policies. |
 | **Another user's payment returns 404, not 403.** | Ownership is filtered in the query, so the API never confirms that a record exists. |
 | **Manual retry is not capped.** | An admin override can retry a payment that exhausted the 3 automatic attempts. Automatic retries stop at `MaxAutomaticAttempts`. |
 | **`TimeProvider` is injected everywhere.** | Time-dependent logic (leases, backoff, audit stamps, JWT expiry) is deterministic in tests. |
@@ -193,6 +194,7 @@ SQL Server, Code First with migrations (`src/PaymentSystem.Infrastructure/Persis
 | `AddHighVolumeIndexesAndConstraints` | Insert-ordered clustered keys, query indexes, check constraints |
 | `AddDailyPaymentReportProcedure` | `dbo.sp_GetDailyPaymentReport`; `Down` drops it |
 | `IncludeCurrencyInReportIndex` | Makes the report index fully covering |
+| `AddRolePermissions` | `Permissions` and `RolePermissions` tables with seed grants; FK to `Permissions` and a check constraint on `Role` |
 
 The default connection string targets LocalDB with Windows authentication. To use another server or SQL authentication, override it with user secrets or the `ConnectionStrings__PaymentSystem` environment variable; never put credentials in `appsettings.json`.
 
@@ -238,14 +240,14 @@ dotnet test
 
 | Project | Tests | Scope |
 |---|---|---|
-| `PaymentSystem.Domain.Tests` | 30 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules |
+| `PaymentSystem.Domain.Tests` | 37 | `Money` rules; every legal and illegal payment transition; automatic-retry rules; provider rules; permission and role grant rules |
 | `PaymentSystem.Application.Tests` | 29 | Idempotent create (replay, conflict, per-user scope, concurrent insert); validation; processing no-op, lost claim, unexpected provider errors and results that arrive after a lost lease; backoff; retry job selection; manual retry |
-| `PaymentSystem.Api.IntegrationTests` | 146 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
+| `PaymentSystem.Api.IntegrationTests` | 155 | All tests run the real HTTP pipeline against a real SQL Server (see below) |
 
 The integration tests cover:
-- **Functional:** every endpoint and status code, and the Swagger contract.
+- **Functional:** every endpoint and status code, the Swagger contract, and permission grants or revocations in the database taking effect at the next login.
 - **Security:** forged, expired and tampered tokens; wrong issuer or audience; `alg: none`; IDOR; mass assignment; injection payloads; error leakage; security headers; rate limits.
-- **Database:** migrations and model in sync; column types; index shapes; check constraints; FK restrict; rowversion concurrency; execution plans.
+- **Database:** migrations and model in sync; column types; index shapes; check constraints; FK restrict; seeded permissions matching the registered policies; rowversion concurrency; execution plans.
 - **Provider client:** response mapping, malformed or empty provider bodies, retry behaviour, and startup validation of timeout and lease settings.
 - **Reports:** exact aggregates, UTC day boundaries, validation, admin-only access.
 - **Load:** 50 identical requests with one key create exactly one payment; 600 concurrent submissions are processed exactly once; concurrent retries.
@@ -288,6 +290,7 @@ Integration tests create a throw-away database `PaymentSystem_IT_<guid>` and dro
 ## Known limitations
 
 - **Single-instance signal.** The in-memory channel lives in one process. Several instances are still safe, because claims use optimistic concurrency and leases recover crashed work. But other instances learn about new payments only through the database poll. A broker (e.g. RabbitMQ, Service Bus) or an outbox would make the signal distributed.
+- **Role permissions have no management endpoint.** Grants live in the `RolePermissions` table and are changed with SQL. A change applies at the next login; tokens already issued keep their permissions until they expire.
 - **No transactional outbox.** The enqueue happens after the insert commits. If the process dies between the two steps, the database poll picks the payment up within `PollIntervalSeconds`.
 - **The fake provider's idempotency store is in memory.** Restarting it forgets approvals; a real provider persists them.
 - **No refresh tokens, no account lockout.** Login brute force is mitigated by rate limiting only.
